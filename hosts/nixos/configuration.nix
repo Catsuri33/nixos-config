@@ -12,6 +12,7 @@
   boot.loader.systemd-boot.enable = true;
   boot.loader.systemd-boot.configurationLimit = 5;
   boot.loader.efi.canTouchEfiVariables = true;
+  boot.kernelPackages = pkgs.linuxPackages_latest; # NTSync requis pour certains jeux (Linux 6.14+)
 
   # Networking
   networking.hostName = "asuslm";
@@ -118,6 +119,7 @@
     wget
     curl
     nvtopPackages.nvidia
+    protonplus  # gestionnaire de versions Proton (DW-Proton, GE-Proton, etc.)
   ];
 
   # Nettoyage automatique des anciennes générations
