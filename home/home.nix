@@ -37,6 +37,18 @@
 
     # Fichiers
     xdg-utils
+    nautilus
+
+    # Navigateur
+    firefox
+
+    # Éditeur
+    vscode
+
+    # Jeux
+    heroic
+    mangohud
+    gamemode
   ];
 
   # Variables d'environnement Wayland

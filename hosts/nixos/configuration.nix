@@ -5,8 +5,12 @@
     ./hardware-configuration.nix
   ];
 
+  # Paquets non-libres (Nvidia, Steam, VSCode...)
+  nixpkgs.config.allowUnfree = true;
+
   # Boot
   boot.loader.systemd-boot.enable = true;
+  boot.loader.systemd-boot.configurationLimit = 5;
   boot.loader.efi.canTouchEfiVariables = true;
 
   # Networking
@@ -35,10 +39,32 @@
     initialPassword = "tobechanged";
   };
 
+  # GPU Nvidia
+  hardware.graphics = {
+    enable = true;
+    enable32Bit = true;
+  };
+
+  services.xserver.videoDrivers = [ "nvidia" ];
+
+  hardware.nvidia = {
+    modesetting.enable = true;
+    open = false;
+    nvidiaSettings = true;
+    package = config.boot.kernelPackages.nvidiaPackages.stable;
+  };
+
   # Hyprland
   programs.hyprland = {
     enable = true;
     xwayland.enable = true;
+  };
+
+  # Steam
+  programs.steam = {
+    enable = true;
+    remotePlay.openFirewall = true;
+    gamescopeSession.enable = true;
   };
 
   # Display manager (tuigreet)
@@ -81,7 +107,17 @@
     git
     wget
     curl
+    nvtopPackages.nvidia
   ];
+
+  # Nettoyage automatique des anciennes générations
+  nix.gc = {
+    automatic = true;
+    dates = "weekly";
+    options = "--delete-older-than 30d";
+  };
+
+  nix.settings.auto-optimise-store = true;
 
   system.stateVersion = "24.11";
 }

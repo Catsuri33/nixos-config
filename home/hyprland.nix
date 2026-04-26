@@ -16,6 +16,11 @@
       env = [
         "XCURSOR_SIZE,24"
         "XCURSOR_THEME,Adwaita"
+        # Nvidia + Wayland
+        "LIBVA_DRIVER_NAME,nvidia"
+        "GBM_BACKEND,nvidia-drm"
+        "__GLX_VENDOR_LIBRARY_NAME,nvidia"
+        "NVD_BACKEND,direct"
       ];
 
       input = {
