@@ -31,6 +31,7 @@
     isNormalUser = true;
     extraGroups = [ "wheel" "networkmanager" "video" "audio" ];
     shell = pkgs.bash;
+    initialPassword = "tobechanged";
   };
 
   # Hyprland
@@ -44,7 +45,7 @@
     enable = true;
     settings = {
       default_session = {
-        command = "${pkgs.greetd.tuigreet}/bin/tuigreet --time --cmd Hyprland";
+        command = "${pkgs.tuigreet}/bin/tuigreet --time --cmd Hyprland";
         user = "greeter";
       };
     };
