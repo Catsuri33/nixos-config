@@ -162,7 +162,7 @@
       ];
 
       # Règles de fenêtres
-      windowrulev2 = [
+      windowrule = [
         "float, class:pavucontrol"
         "float, class:nm-connection-editor"
       ];
