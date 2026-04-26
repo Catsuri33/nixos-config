@@ -161,11 +161,6 @@
         "$mod, mouse:273, resizewindow"
       ];
 
-      # Règles de fenêtres
-      windowrule = [
-        "float, class:(pavucontrol)"
-        "float, class:(nm-connection-editor)"
-      ];
     };
   };
 }
