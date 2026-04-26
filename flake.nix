@@ -10,6 +10,8 @@
     };
 
     hyprland.url = "github:hyprwm/Hyprland";
+
+    hyprswitch.url = "github:H3rmt/hyprswitch";
   };
 
   outputs = { self, nixpkgs, home-manager, hyprland, ... }@inputs:

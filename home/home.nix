@@ -51,7 +51,7 @@
     spotify
 
     # Changement de fenêtre
-    hyprswitch
+    inputs.hyprswitch.packages.${pkgs.system}.hyprswitch
 
     # Éditeur
     vscode
