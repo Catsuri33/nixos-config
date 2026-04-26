@@ -5,6 +5,7 @@
     ./hyprland.nix
     ./waybar.nix
     ./hyprlock.nix
+    ./wofi.nix
   ];
 
   home.username = "lmichault";
@@ -14,9 +15,6 @@
   home.packages = with pkgs; [
     # Fond d'écran
     awww
-
-    # Lanceur d'applications
-    wofi
 
     # Terminal
     kitty
