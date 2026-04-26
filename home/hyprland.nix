@@ -12,6 +12,7 @@
         "waybar"
         "dunst"
         "nm-applet --indicator"
+        "blueman-applet"
         "hyprswitch init --show-title"
       ];
 
