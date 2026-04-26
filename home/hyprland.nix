@@ -148,6 +148,9 @@
         ", Print,       exec, grim -g \"$(slurp)\" - | wl-copy"
         "SHIFT, Print,  exec, grim - | wl-copy"
 
+        # Changement de layout clavier (AZERTY/QWERTY)
+        "$mod, Space,    exec, if hyprctl -j getoption input:kb_layout | grep -q '\"fr\"'; then hyprctl keyword input:kb_layout us; else hyprctl keyword input:kb_layout fr; fi"
+
         # Changement de fenêtre
         "ALT, Tab,       exec, hyprswitch gui --mod-key alt --key tab --max-switch-offset 9"
         "ALT SHIFT, Tab, exec, hyprswitch gui --mod-key alt --key tab --reverse --max-switch-offset 9"
