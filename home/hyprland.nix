@@ -11,6 +11,7 @@
         "awww ~/.config/wallpaper.jpg"
         "waybar"
         "dunst"
+        "nm-applet --indicator"
       ];
 
       env = [

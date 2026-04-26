@@ -33,6 +33,9 @@
     playerctl
     pavucontrol
 
+    # Réseau
+    networkmanagerapplet
+
     # Fichiers
     xdg-utils
     nautilus
