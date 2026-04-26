@@ -45,7 +45,6 @@
 
     # Communication
     discord
-    proton-mail
 
     # Musique
     spotify
