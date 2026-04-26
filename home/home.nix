@@ -50,6 +50,9 @@
     # Musique
     spotify
 
+    # Changement de fenêtre
+    hyprswitch
+
     # Éditeur
     vscode
 

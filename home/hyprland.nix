@@ -12,6 +12,7 @@
         "waybar"
         "dunst"
         "nm-applet --indicator"
+        "hyprswitch init --show-title"
       ];
 
       env = [
@@ -144,6 +145,14 @@
         # Capture d'écran
         ", Print,       exec, grim -g \"$(slurp)\" - | wl-copy"
         "SHIFT, Print,  exec, grim - | wl-copy"
+
+        # Changement de fenêtre
+        "ALT, Tab,       exec, hyprswitch gui --mod-key alt --key tab --max-switch-offset 9"
+        "ALT SHIFT, Tab, exec, hyprswitch gui --mod-key alt --key tab --reverse --max-switch-offset 9"
+      ];
+
+      bindr = [
+        "ALT, Alt_L, exec, hyprswitch close --kill"
       ];
 
       # Touches multimédia
