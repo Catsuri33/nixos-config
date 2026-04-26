@@ -163,8 +163,8 @@
 
       # Règles de fenêtres
       windowrule = [
-        "float, class:pavucontrol"
-        "float, class:nm-connection-editor"
+        "class:pavucontrol, float"
+        "class:nm-connection-editor, float"
       ];
     };
   };
