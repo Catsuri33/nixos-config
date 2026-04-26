@@ -163,7 +163,6 @@
 
       # Règles de fenêtres
       windowrulev2 = [
-        "suppressevent maximize, class:.*"
         "float, class:pavucontrol"
         "float, class:nm-connection-editor"
       ];
