@@ -43,6 +43,13 @@
     # Navigateur
     firefox
 
+    # Communication
+    discord
+    proton-mail
+
+    # Musique
+    spotify
+
     # Éditeur
     vscode
 
