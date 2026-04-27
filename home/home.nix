@@ -56,6 +56,7 @@
 
     # Éditeur
     vscode
+    claude-code
 
     # Jeux
     heroic
