@@ -13,7 +13,7 @@
         "dunst"
         "nm-applet --indicator"
         "blueman-applet"
-        "hyprswitch init --show-title"
+        "hyprshell init --show-title"
       ];
 
       env = [
@@ -152,12 +152,12 @@
         "$mod, Space,    exec, if hyprctl -j getoption input:kb_layout | grep -q '\"fr\"'; then hyprctl keyword input:kb_layout us; else hyprctl keyword input:kb_layout fr; fi"
 
         # Changement de fenêtre
-        "$mod, Tab,       exec, hyprswitch gui --mod-key super --key tab --max-switch-offset 9"
-        "$mod SHIFT, Tab, exec, hyprswitch gui --mod-key super --key tab --reverse --max-switch-offset 9"
+        "$mod, Tab,       exec, hyprshell gui --mod-key super --key tab --max-switch-offset 9"
+        "$mod SHIFT, Tab, exec, hyprshell gui --mod-key super --key tab --reverse --max-switch-offset 9"
       ];
 
       bindr = [
-        "$mod, Super_L, exec, hyprswitch close --kill"
+        "$mod, Super_L, exec, hyprshell close --kill"
       ];
 
       # Touches multimédia

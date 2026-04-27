@@ -49,7 +49,7 @@
     spotify
 
     # Lanceur d'applications
-    vicinae
+    inputs.vicinae.packages.${pkgs.system}.default
 
     # Changement de fenêtre
     inputs.hyprswitch.packages.${pkgs.system}.default
@@ -74,8 +74,8 @@
     CLUTTER_BACKEND = "wayland";
   };
 
-  # CSS pour hyprswitch (sans ce fichier la fenêtre est transparente sur Nvidia/Wayland)
-  xdg.configFile."hyprswitch/style.css".text = ''
+  # CSS pour hyprshell (sans ce fichier la fenêtre est transparente sur Nvidia/Wayland)
+  xdg.configFile."hyprshell/style.css".text = ''
     .client-image {
       margin: 15px;
     }

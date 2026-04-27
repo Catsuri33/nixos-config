@@ -11,10 +11,12 @@
 
     hyprland.url = "github:hyprwm/Hyprland";
 
-    hyprswitch.url = "github:H3rmt/hyprswitch";
+    hyprswitch.url = "github:H3rmt/hyprshell";
+
+    vicinae.url = "github:vicinaehq/vicinae";
   };
 
-  outputs = { self, nixpkgs, home-manager, hyprland, ... }@inputs:
+  outputs = { self, nixpkgs, home-manager, hyprland, vicinae, ... }@inputs:
   let
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
