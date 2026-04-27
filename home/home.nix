@@ -5,7 +5,6 @@
     ./hyprland.nix
     ./waybar.nix
     ./hyprlock.nix
-    ./wofi.nix
   ];
 
   home.username = "lmichault";
@@ -48,6 +47,9 @@
 
     # Musique
     spotify
+
+    # Lanceur d'applications
+    vicinae
 
     # Changement de fenêtre
     inputs.hyprswitch.packages.${pkgs.system}.default
