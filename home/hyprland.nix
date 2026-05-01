@@ -8,12 +8,13 @@
       monitor = ",preferred,auto,1";
 
       exec-once = [
-        "awww ~/.config/wallpaper.jpg"
-        "waybar"
-        "dunst"
-        "nm-applet --indicator"
-        "blueman-applet"
-        "hyprshell init --show-title"
+        "uwsm app -- awww ~/.config/wallpaper.jpg"
+        "uwsm app -- waybar"
+        "uwsm app -- dunst"
+        "uwsm app -- nm-applet --indicator"
+        "uwsm app -- blueman-applet"
+        "uwsm app -- hyprshell run"
+        "uwsm app -- vicinae server"
       ];
 
       env = [
@@ -93,8 +94,8 @@
       bind = [
         # Applications
         "$mod, Return, exec, kitty"
-        "$mod, R,      exec, vicinae"
-        "$mod, L,      exec, hyprlock"
+        "$mod, R,      exec, vicinae toggle"
+        "$mod SHIFT, L, exec, hyprlock"
 
         # Gestion des fenêtres
         "$mod, Q,      killactive"
@@ -120,7 +121,7 @@
         "$mod SHIFT, up,    movewindow, u"
         "$mod SHIFT, down,  movewindow, d"
 
-        # Espaces de travail
+        # Espaces de travail (QWERTY)
         "$mod, 1, workspace, 1"
         "$mod, 2, workspace, 2"
         "$mod, 3, workspace, 3"
@@ -132,7 +133,19 @@
         "$mod, 9, workspace, 9"
         "$mod, 0, workspace, 10"
 
-        # Envoyer une fenêtre vers un espace de travail
+        # Espaces de travail (AZERTY)
+        "$mod, ampersand,   workspace, 1"
+        "$mod, eacute,      workspace, 2"
+        "$mod, quotedbl,    workspace, 3"
+        "$mod, apostrophe,  workspace, 4"
+        "$mod, parenleft,   workspace, 5"
+        "$mod, minus,       workspace, 6"
+        "$mod, egrave,      workspace, 7"
+        "$mod, underscore,  workspace, 8"
+        "$mod, ccedilla,    workspace, 9"
+        "$mod, agrave,      workspace, 10"
+
+        # Envoyer une fenêtre vers un espace de travail (QWERTY)
         "$mod SHIFT, 1, movetoworkspace, 1"
         "$mod SHIFT, 2, movetoworkspace, 2"
         "$mod SHIFT, 3, movetoworkspace, 3"
@@ -144,6 +157,18 @@
         "$mod SHIFT, 9, movetoworkspace, 9"
         "$mod SHIFT, 0, movetoworkspace, 10"
 
+        # Envoyer une fenêtre vers un espace de travail (AZERTY)
+        "$mod SHIFT, ampersand,   movetoworkspace, 1"
+        "$mod SHIFT, eacute,      movetoworkspace, 2"
+        "$mod SHIFT, quotedbl,    movetoworkspace, 3"
+        "$mod SHIFT, apostrophe,  movetoworkspace, 4"
+        "$mod SHIFT, parenleft,   movetoworkspace, 5"
+        "$mod SHIFT, minus,       movetoworkspace, 6"
+        "$mod SHIFT, egrave,      movetoworkspace, 7"
+        "$mod SHIFT, underscore,  movetoworkspace, 8"
+        "$mod SHIFT, ccedilla,    movetoworkspace, 9"
+        "$mod SHIFT, agrave,      movetoworkspace, 10"
+
         # Capture d'écran
         ", Print,       exec, grim -g \"$(slurp)\" - | wl-copy"
         "SHIFT, Print,  exec, grim - | wl-copy"
@@ -151,13 +176,6 @@
         # Changement de layout clavier (AZERTY/QWERTY)
         "$mod, Space,    exec, if hyprctl -j getoption input:kb_layout | grep -q '\"fr\"'; then hyprctl keyword input:kb_layout us; else hyprctl keyword input:kb_layout fr; fi"
 
-        # Changement de fenêtre
-        "$mod, Tab,       exec, hyprshell gui --mod-key super --key tab --max-switch-offset 9"
-        "$mod SHIFT, Tab, exec, hyprshell gui --mod-key super --key tab --reverse --max-switch-offset 9"
-      ];
-
-      bindr = [
-        "$mod, Super_L, exec, hyprshell close --kill"
       ];
 
       # Touches multimédia

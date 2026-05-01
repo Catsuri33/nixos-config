@@ -49,10 +49,14 @@
     spotify
 
     # Lanceur d'applications
-    inputs.vicinae.packages.${pkgs.system}.default
+    inputs.vicinae.packages.${pkgs.stdenv.hostPlatform.system}.default
 
     # Changement de fenêtre
-    inputs.hyprswitch.packages.${pkgs.system}.default
+    inputs.hyprswitch.packages.${pkgs.stdenv.hostPlatform.system}.default
+
+    # GPG
+    gnupg
+    pinentry-curses
 
     # Éditeur
     vscode
@@ -76,7 +80,7 @@
   };
 
   # CSS pour hyprshell (sans ce fichier la fenêtre est transparente sur Nvidia/Wayland)
-  xdg.configFile."hyprshell/style.css".text = ''
+  xdg.configFile."hyprshell/styles.css".text = ''
     .client-image {
       margin: 15px;
     }
@@ -116,5 +120,73 @@
     }
   '';
 
+  xdg.configFile."hyprshell/config.ron".text = ''
+    (
+        version: 3,
+        windows: (
+            scale: 8.5,
+            items_per_row: 5,
+            overview: (
+                launcher: (
+                    default_terminal: None,
+                    launch_modifier: "ctrl",
+                    width: 650,
+                    max_items: 5,
+                    show_when_empty: true,
+                    plugins: (
+                        applications: (
+                            run_cache_weeks: 8,
+                            show_execs: true,
+                            show_actions_submenu: true,
+                        ),
+                        terminal: (),
+                        shell: (),
+                        websearch: (
+                            engines: [
+                                (
+                                    url: "https://www.google.com/search?q={}",
+                                    name: "Google",
+                                    key: 'g',
+                                ),
+                            ],
+                        ),
+                        calc: (),
+                        path: (),
+                        actions: (
+                            actions: [
+                                lock_screen,
+                                logout,
+                                reboot,
+                                shutdown,
+                                suspend,
+                            ],
+                        ),
+                    ),
+                ),
+                key: "Tab",
+                modifier: "alt",
+                filter_by: [],
+                hide_filtered: false,
+                exclude_special_workspaces: "",
+            ),
+            switch: (
+                modifier: "super",
+                key: "Tab",
+                filter_by: [
+                    current_monitor,
+                ],
+                switch_workspaces: false,
+                exclude_special_workspaces: "",
+            ),
+            switch_2: None,
+        ),
+    )
+  '';
+
   programs.home-manager.enable = true;
+
+  services.gpg-agent = {
+    enable = true;
+    pinentryPackage = pkgs.pinentry-curses;
+  };
 }
