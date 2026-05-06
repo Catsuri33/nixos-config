@@ -58,6 +58,9 @@
     gnupg
     pinentry-curses
 
+    # Monitoring
+    btop
+
     # Éditeur
     vscode
     claude-code
@@ -67,11 +70,16 @@
     mangohud
     gamemode
 
+    # Wine / BO2
+    wineWow64Packages.staging
+    winetricks
+    dxvk
+
     # Torrents
     qbittorrent
 
     # VPN
-    protonvpn-gui
+    proton-vpn
   ];
 
   # Variables d'environnement Wayland
@@ -200,6 +208,6 @@
 
   services.gpg-agent = {
     enable = true;
-    pinentryPackage = pkgs.pinentry-curses;
+    pinentry.package = pkgs.pinentry-curses;
   };
 }
