@@ -66,6 +66,12 @@
     heroic
     mangohud
     gamemode
+
+    # Torrents
+    qbittorrent
+
+    # VPN
+    protonvpn-gui
   ];
 
   # Variables d'environnement Wayland
@@ -184,6 +190,13 @@
   '';
 
   programs.home-manager.enable = true;
+
+  programs.bash = {
+    enable = true;
+    initExtra = ''
+      export GPG_TTY=$(tty)
+    '';
+  };
 
   services.gpg-agent = {
     enable = true;
