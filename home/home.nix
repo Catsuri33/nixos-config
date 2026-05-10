@@ -73,6 +73,7 @@
     # Wine / BO2
     wineWow64Packages.staging
     winetricks
+    protontricks
     dxvk
 
     # Torrents

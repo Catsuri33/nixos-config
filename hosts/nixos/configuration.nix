@@ -18,6 +18,16 @@
   networking.hostName = "asuslm";
   networking.networkmanager.enable = true;
 
+  # NFS client
+  services.rpcbind.enable = true;
+  boot.supportedFilesystems = [ "nfs" ];
+
+  fileSystems."/mnt/jellyfin" = {
+    device = "192.168.1.152:/tank/jellyfin/media";
+    fsType = "nfs";
+    options = [ "nfsvers=4" "noatime" "x-systemd.automount" "noauto" "x-systemd.idle-timeout=600" ];
+  };
+
   # Locale
   time.timeZone = "Europe/Paris";
   i18n.defaultLocale = "fr_FR.UTF-8";
