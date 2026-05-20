@@ -138,6 +138,7 @@
     curl
     nvtopPackages.nvidia
     protonplus  # gestionnaire de versions Proton (DW-Proton, GE-Proton, etc.)
+    inputs.kopuz.packages.${pkgs.system}.default
   ];
 
   # Nettoyage automatique des anciennes générations
@@ -147,7 +148,14 @@
     options = "--delete-older-than 30d";
   };
 
-  nix.settings.auto-optimise-store = true;
+  nix.settings = {
+    auto-optimise-store = true;
+    substituters = [ "https://cache.nixos.org" "https://kopuz.cachix.org" ];
+    trusted-public-keys = [
+      "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
+      "kopuz.cachix.org-1:J2X3AnAYhKTJW5S3aCLoA1ckonQXVNZMQvhZA0YAufw="
+    ];
+  };
 
   system.stateVersion = "24.11";
 }

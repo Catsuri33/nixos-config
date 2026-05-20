@@ -14,9 +14,11 @@
     hyprswitch.url = "github:H3rmt/hyprshell";
 
     vicinae.url = "github:vicinaehq/vicinae";
+
+    kopuz.url = "github:temidaradev/kopuz";
   };
 
-  outputs = { self, nixpkgs, home-manager, hyprland, vicinae, ... }@inputs:
+  outputs = { self, nixpkgs, home-manager, hyprland, vicinae, kopuz, ... }@inputs:
   let
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
