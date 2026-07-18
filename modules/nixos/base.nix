@@ -44,8 +44,13 @@
     # user's process now requires sudo.
     "kernel.yama.ptrace_scope" = 2;
     "kernel.kexec_load_disabled" = 1;
-    "net.ipv4.conf.all.rp_filter" = 1;
-    "net.ipv4.conf.default.rp_filter" = 1;
+    # Loose (not strict) RPF: strict mode drops return traffic under the
+    # policy routing that ProtonVPN's killswitch sets up (separate routing
+    # table + fwmark rules), which silently killed all connectivity while
+    # connected. Loose still blocks packets with no route at all, just not
+    # ones that are asymmetric across routing tables.
+    "net.ipv4.conf.all.rp_filter" = 2;
+    "net.ipv4.conf.default.rp_filter" = 2;
     "net.ipv4.conf.all.accept_redirects" = 0;
     "net.ipv4.conf.default.accept_redirects" = 0;
     "net.ipv4.conf.all.send_redirects" = 0;
