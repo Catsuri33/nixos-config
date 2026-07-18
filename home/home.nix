@@ -124,4 +124,67 @@
     enable = true;
     pinentry.package = pkgs.pinentry-curses;
   };
+
+  home.file.".config/wallpapers".source = ../wallpapers;
+
+  home.file.".local/bin/wallpaper-rotate" = {
+    executable = true;
+    source = pkgs.writeShellScript "wallpaper-rotate" ''
+      dir="$HOME/.config/wallpapers"
+
+      # Wait for awww-daemon to be ready (avoids a race on login/boot)
+      for i in $(seq 1 20); do
+        ${pkgs.awww}/bin/awww query >/dev/null 2>&1 && break
+        sleep 0.3
+      done
+
+      wall=$(${pkgs.findutils}/bin/find "$dir" -maxdepth 1 -type f \
+        \( -name "*.jpg" -o -name "*.jpeg" -o -name "*.png" \) \
+        2>/dev/null | ${pkgs.coreutils}/bin/shuf -n1)
+      if [ -n "$wall" ]; then
+        ${pkgs.awww}/bin/awww img "$wall" \
+          --transition-type random \
+          --transition-fps 60 \
+          --transition-duration 2
+      else
+        ${pkgs.awww}/bin/awww clear 1c1c1e
+      fi
+    '';
+  };
+
+  systemd.user = {
+    services.wallpaper-rotate = {
+      Unit = {
+        Description = "Rotate desktop wallpaper";
+        After = [ "graphical-session.target" ];
+      };
+      Service = {
+        Type = "oneshot";
+        ExecStart = "%h/.local/bin/wallpaper-rotate";
+      };
+    };
+
+    timers.wallpaper-rotate = {
+      Unit.Description = "Wallpaper rotation timer";
+      Timer = {
+        OnBootSec = "30min";
+        OnUnitActiveSec = "30min";
+      };
+      Install.WantedBy = [ "timers.target" ];
+    };
+
+    services.protonvpn = {
+      Unit = {
+        Description = "ProtonVPN";
+        After = [ "graphical-session.target" "network.target" ];
+        PartOf = [ "graphical-session.target" ];
+      };
+      Service = {
+        ExecStart = "${pkgs.proton-vpn}/bin/protonvpn-app";
+        Restart = "on-failure";
+        RestartSec = "5";
+      };
+      Install.WantedBy = [ "graphical-session.target" ];
+    };
+  };
 }

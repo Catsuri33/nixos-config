@@ -33,14 +33,7 @@
     xwayland.enable = true;
   };
 
-  programs.uwsm = {
-    enable = true;
-    waylandCompositors.hyprland = {
-      prettyName = "Hyprland";
-      comment = "Hyprland compositor managed by UWSM";
-      binPath = "/run/current-system/sw/bin/start-hyprland";
-    };
-  };
+  programs.uwsm.enable = true;
 
   services.greetd = {
     enable = true;
@@ -86,6 +79,7 @@
     git
     wget
     curl
+    wireguard-tools
   ];
 
   nix.gc = {
@@ -94,8 +88,17 @@
     options = "--delete-older-than 30d";
   };
 
+  system.autoUpgrade = {
+    enable = true;
+    flake = "/home/lmichault/nixos-config";
+    flags = [ "--update-input" "nixpkgs" ];
+    dates = "weekly";
+    allowReboot = false;
+  };
+
   nix.settings = {
     auto-optimise-store = true;
+    experimental-features = [ "nix-command" "flakes" ];
     substituters = [ "https://cache.nixos.org" ];
     trusted-public-keys = [
       "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="

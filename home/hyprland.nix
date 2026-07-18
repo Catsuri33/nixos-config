@@ -3,13 +3,14 @@
 {
   wayland.windowManager.hyprland = {
     enable = true;
+    configType = "hyprlang";
 
     settings = {
       monitor = ",preferred,auto,1";
 
       exec-once = [
         "uwsm app -- awww-daemon"
-        "uwsm app -- sh -c 'sleep 0.5 && awww img ~/.config/wallpaper.jpg || awww clear 1c1c1e'"
+        "uwsm app -- $HOME/.local/bin/wallpaper-rotate"
         "uwsm app -- waybar"
         "uwsm app -- dunst"
         "uwsm app -- nm-applet --indicator"
@@ -26,6 +27,7 @@
         kb_layout = "fr";
         follow_mouse = 1;
         sensitivity = 0;
+        numlock_by_default = true;
         touchpad = {
           natural_scroll = true;
           disable_while_typing = true;
@@ -78,7 +80,6 @@
       };
 
       dwindle = {
-        pseudotile = true;
         preserve_split = true;
       };
 
@@ -101,7 +102,6 @@
         "$mod, V,      togglefloating"
         "$mod, F,      fullscreen"
         "$mod, P,      pseudo"
-        "$mod, J,      togglesplit"
 
         # Focus
         "$mod, left,   movefocus, l"
