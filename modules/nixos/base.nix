@@ -6,6 +6,13 @@
   boot.loader.systemd-boot.configurationLimit = 5;
   boot.loader.efi.canTouchEfiVariables = true;
 
+  # RAM-backed compressed swap: nothing ever touches the disk in plaintext.
+  zramSwap.enable = true;
+
+  # systemd initrd — required for systemd-cryptenroll (TPM2 unlock) once LUKS
+  # is in place. Safe on its own for non-encrypted hosts too.
+  boot.initrd.systemd.enable = true;
+
   networking.networkmanager.enable = true;
 
   time.timeZone = "Europe/Paris";

@@ -12,9 +12,14 @@
     hyprland.url = "github:hyprwm/Hyprland";
 
     vicinae.url = "github:vicinaehq/vicinae";
+
+    disko = {
+      url = "github:nix-community/disko";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, home-manager, hyprland, vicinae, ... }@inputs:
+  outputs = { self, nixpkgs, home-manager, hyprland, vicinae, disko, ... }@inputs:
   let
     system = "x86_64-linux";
 
@@ -30,6 +35,14 @@
     nixosConfigurations = {
 
       # Gaming laptop (Nvidia, Wine, Steam)
+      # NOTE: disko.nixosModules.disko + ./hosts/laptop-gaming/disko.nix are
+      # deliberately NOT wired in here yet. This host is live, boots from a
+      # plain ext4 root today, and system.autoUpgrade runs `nixos-rebuild
+      # switch` weekly (modules/nixos/base.nix) — wiring disko now would make
+      # the next auto-upgrade activate a config expecting
+      # /dev/mapper/cryptroot, which doesn't exist until the physical LUKS
+      # reinstall happens. Add the two lines back (see desktop-gaming below
+      # for the pattern) only right before doing that reinstall.
       laptop-gaming = nixpkgs.lib.nixosSystem {
         inherit system;
         specialArgs = { inherit inputs; };
@@ -49,6 +62,8 @@
         inherit system;
         specialArgs = { inherit inputs; };
         modules = [
+          disko.nixosModules.disko
+          ./hosts/desktop-gaming/disko.nix
           ./hosts/desktop-gaming/configuration.nix
           home-manager.nixosModules.home-manager
           (mkHome [
@@ -63,6 +78,8 @@
         inherit system;
         specialArgs = { inherit inputs; };
         modules = [
+          disko.nixosModules.disko
+          ./hosts/laptop-light/disko.nix
           ./hosts/laptop-light/configuration.nix
           home-manager.nixosModules.home-manager
           (mkHome [

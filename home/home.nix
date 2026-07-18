@@ -138,7 +138,7 @@
         sleep 0.3
       done
 
-      wall=$(${pkgs.findutils}/bin/find "$dir" -maxdepth 1 -type f \
+      wall=$(${pkgs.findutils}/bin/find -L "$dir" -maxdepth 1 -type f \
         \( -name "*.jpg" -o -name "*.jpeg" -o -name "*.png" \) \
         2>/dev/null | ${pkgs.coreutils}/bin/shuf -n1)
       if [ -n "$wall" ]; then
@@ -167,8 +167,8 @@
     timers.wallpaper-rotate = {
       Unit.Description = "Wallpaper rotation timer";
       Timer = {
-        OnBootSec = "30min";
-        OnUnitActiveSec = "30min";
+        OnBootSec = "10min";
+        OnUnitActiveSec = "10min";
       };
       Install.WantedBy = [ "timers.target" ];
     };
