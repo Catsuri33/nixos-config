@@ -12,7 +12,7 @@
   home.stateVersion = "24.11";
 
   home.packages = with pkgs; [
-    # Fond d'écran
+    # Wallpaper
     awww
 
     # Terminal
@@ -22,37 +22,40 @@
     dunst
     libnotify
 
-    # Utilitaires Wayland
-    grim          # capture d'écran
-    slurp         # sélection de zone
-    wl-clipboard  # presse-papier Wayland
+    # Wayland utilities
+    grim
+    slurp
+    wl-clipboard
 
-    # Média / volume
+    # Media / volume
     brightnessctl
     playerctl
     pavucontrol
 
-    # Réseau
+    # Network
     networkmanagerapplet
 
-    # Fichiers
+    # Files
     xdg-utils
     nautilus
 
-    # Navigateur
+    # Browser
     firefox
 
     # Communication
     discord
+    signal-desktop
 
-    # Musique
+    # Music
     spotify
 
-    # Lanceur d'applications
-    inputs.vicinae.packages.${pkgs.stdenv.hostPlatform.system}.default
+    # Proton suite
+    protonmail-desktop
+    proton-vpn
+    proton-authenticator
 
-    # Changement de fenêtre
-    inputs.hyprswitch.packages.${pkgs.stdenv.hostPlatform.system}.default
+    # Application launcher
+    inputs.vicinae.packages.${pkgs.stdenv.hostPlatform.system}.default
 
     # GPG
     gnupg
@@ -61,144 +64,54 @@
     # Monitoring
     btop
 
-    # Éditeur
+    # Editor
     vscode
     claude-code
-
-    # Jeux
-    heroic
-    mangohud
-    gamemode
-
-    # Wine / BO2
-    wineWow64Packages.staging
-    winetricks
-    protontricks
-    dxvk
-
-    # Torrents
-    qbittorrent
-
-    # VPN
-    proton-vpn
   ];
 
-  # Variables d'environnement Wayland
+  # Wayland environment variables
   home.sessionVariables = {
     NIXOS_OZONE_WL = "1";
     MOZ_ENABLE_WAYLAND = "1";
     QT_QPA_PLATFORM = "wayland";
     QT_WAYLAND_DISABLE_WINDOWDECORATION = "1";
     GDK_BACKEND = "wayland,x11";
-    # SDL_VIDEODRIVER = "wayland" retiré : casse les jeux Proton/XWayland (écran noir)
     CLUTTER_BACKEND = "wayland";
   };
 
-  # CSS pour hyprshell (sans ce fichier la fenêtre est transparente sur Nvidia/Wayland)
-  xdg.configFile."hyprshell/styles.css".text = ''
-    .client-image {
-      margin: 15px;
-    }
-    .client-index {
-      font-size: 2rem;
-      font-family: "JetBrainsMono Nerd Font";
-      color: white;
-      margin: 8px;
-    }
-    .workspace {
-      font-size: 1.5rem;
-      font-family: "JetBrainsMono Nerd Font";
-      color: white;
-      border: 2px solid rgba(89, 180, 250, 0.6);
-      border-radius: 10px;
-      padding: 10px;
-      margin: 5px;
-    }
-    .workspace:selected {
-      border-color: rgba(203, 166, 247, 0.9);
-    }
-    .client {
-      border-radius: 8px;
-      margin: 5px;
-      padding: 5px;
-      background: rgba(30, 30, 46, 0.85);
-    }
-    .client:selected {
-      background: rgba(89, 180, 250, 0.25);
-      border: 2px solid rgba(89, 180, 250, 0.9);
-    }
-    .window {
-      background: rgba(17, 17, 27, 0.9);
-      border-radius: 15px;
-      border: 2px solid rgba(89, 180, 250, 0.4);
-      padding: 15px;
-    }
-  '';
-
-  xdg.configFile."hyprshell/config.ron".text = ''
-    (
-        version: 3,
-        windows: (
-            scale: 8.5,
-            items_per_row: 5,
-            overview: (
-                launcher: (
-                    default_terminal: None,
-                    launch_modifier: "ctrl",
-                    width: 650,
-                    max_items: 5,
-                    show_when_empty: true,
-                    plugins: (
-                        applications: (
-                            run_cache_weeks: 8,
-                            show_execs: true,
-                            show_actions_submenu: true,
-                        ),
-                        terminal: (),
-                        shell: (),
-                        websearch: (
-                            engines: [
-                                (
-                                    url: "https://www.google.com/search?q={}",
-                                    name: "Google",
-                                    key: 'g',
-                                ),
-                            ],
-                        ),
-                        calc: (),
-                        path: (),
-                        actions: (
-                            actions: [
-                                lock_screen,
-                                logout,
-                                reboot,
-                                shutdown,
-                                suspend,
-                            ],
-                        ),
-                    ),
-                ),
-                key: "Tab",
-                modifier: "alt",
-                filter_by: [],
-                hide_filtered: false,
-                exclude_special_workspaces: "",
-            ),
-            switch: (
-                modifier: "super",
-                key: "Tab",
-                filter_by: [
-                    current_monitor,
-                ],
-                switch_workspaces: false,
-                exclude_special_workspaces: "",
-            ),
-            switch_2: None,
-        ),
-    )
-  '';
+  # Auto-sleep via hypridle (timeouts in seconds, adjust to taste)
+  services.hypridle = {
+    enable = true;
+    settings = {
+      general = {
+        lock_cmd        = "pidof hyprlock || hyprlock";
+        before_sleep_cmd = "loginctl lock-session";
+        after_sleep_cmd  = "hyprctl dispatch dpms on";
+      };
+      listener = [
+        {
+          timeout  = 600;   # 10 min — lock screen
+          on-timeout = "loginctl lock-session";
+        }
+        {
+          timeout  = 900;   # 15 min — turn off displays
+          on-timeout = "hyprctl dispatch dpms off";
+          on-resume  = "hyprctl dispatch dpms on";
+        }
+        {
+          timeout  = 1800;  # 30 min — suspend
+          on-timeout = "systemctl suspend";
+        }
+      ];
+    };
+  };
 
   programs.home-manager.enable = true;
+
+  programs.kitty = {
+    enable = true;
+    settings.confirm_os_window_close = 0;
+  };
 
   programs.bash = {
     enable = true;

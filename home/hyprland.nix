@@ -8,24 +8,18 @@
       monitor = ",preferred,auto,1";
 
       exec-once = [
-        "uwsm app -- awww ~/.config/wallpaper.jpg"
+        "uwsm app -- awww-daemon"
+        "uwsm app -- sh -c 'sleep 0.5 && awww img ~/.config/wallpaper.jpg || awww clear 1c1c1e'"
         "uwsm app -- waybar"
         "uwsm app -- dunst"
         "uwsm app -- nm-applet --indicator"
         "uwsm app -- blueman-applet"
-        "uwsm app -- hyprshell run"
         "uwsm app -- vicinae server"
       ];
 
       env = [
         "XCURSOR_SIZE,24"
         "XCURSOR_THEME,Adwaita"
-        # Nvidia + Wayland
-        "LIBVA_DRIVER_NAME,nvidia"
-        "GBM_BACKEND,nvidia-drm"
-        "__GLX_VENDOR_LIBRARY_NAME,nvidia"
-        "NVD_BACKEND,direct"
-        "WLR_NO_HARDWARE_CURSORS,1"
       ];
 
       input = {
@@ -39,30 +33,34 @@
       };
 
       general = {
-        gaps_in = 5;
-        gaps_out = 10;
-        border_size = 2;
-        "col.active_border" = "rgba(89b4faee) rgba(cba6f7ee) 45deg";
-        "col.inactive_border" = "rgba(45475aaa)";
+        gaps_in = 6;
+        gaps_out = 12;
+        border_size = 1;
+        "col.active_border" = "rgba(0a84ffcc) rgba(60c3ffcc) 45deg";
+        "col.inactive_border" = "rgba(ffffff14)";
         layout = "dwindle";
         resize_on_border = true;
       };
 
       decoration = {
-        rounding = 10;
+        rounding = 12;
         blur = {
           enabled = true;
-          size = 5;
-          passes = 2;
+          size = 8;
+          passes = 3;
           new_optimizations = true;
+          xray = false;
         };
         shadow = {
           enabled = true;
-          range = 8;
+          range = 20;
           render_power = 3;
-          color = "rgba(1a1a2eee)";
+          color = "rgba(00000055)";
+          color_inactive = "rgba(00000030)";
         };
+        inactive_opacity = 0.96;
       };
+
 
       animations = {
         enabled = true;
@@ -97,7 +95,7 @@
         "$mod, R,      exec, vicinae toggle"
         "$mod SHIFT, L, exec, hyprlock"
 
-        # Gestion des fenêtres
+        # Window management
         "$mod, Q,      killactive"
         "$mod, M,      exit"
         "$mod, V,      togglefloating"
@@ -115,13 +113,13 @@
         "$mod, K,      movefocus, u"
         "$mod, J,      movefocus, d"
 
-        # Déplacer les fenêtres
+        # Move windows
         "$mod SHIFT, left,  movewindow, l"
         "$mod SHIFT, right, movewindow, r"
         "$mod SHIFT, up,    movewindow, u"
         "$mod SHIFT, down,  movewindow, d"
 
-        # Espaces de travail (QWERTY)
+        # Workspaces (QWERTY)
         "$mod, 1, workspace, 1"
         "$mod, 2, workspace, 2"
         "$mod, 3, workspace, 3"
@@ -133,7 +131,7 @@
         "$mod, 9, workspace, 9"
         "$mod, 0, workspace, 10"
 
-        # Espaces de travail (AZERTY)
+        # Workspaces (AZERTY)
         "$mod, ampersand,   workspace, 1"
         "$mod, eacute,      workspace, 2"
         "$mod, quotedbl,    workspace, 3"
@@ -145,7 +143,7 @@
         "$mod, ccedilla,    workspace, 9"
         "$mod, agrave,      workspace, 10"
 
-        # Envoyer une fenêtre vers un espace de travail (QWERTY)
+        # Move window to workspace (QWERTY)
         "$mod SHIFT, 1, movetoworkspace, 1"
         "$mod SHIFT, 2, movetoworkspace, 2"
         "$mod SHIFT, 3, movetoworkspace, 3"
@@ -157,7 +155,7 @@
         "$mod SHIFT, 9, movetoworkspace, 9"
         "$mod SHIFT, 0, movetoworkspace, 10"
 
-        # Envoyer une fenêtre vers un espace de travail (AZERTY)
+        # Move window to workspace (AZERTY)
         "$mod SHIFT, ampersand,   movetoworkspace, 1"
         "$mod SHIFT, eacute,      movetoworkspace, 2"
         "$mod SHIFT, quotedbl,    movetoworkspace, 3"
@@ -169,16 +167,16 @@
         "$mod SHIFT, ccedilla,    movetoworkspace, 9"
         "$mod SHIFT, agrave,      movetoworkspace, 10"
 
-        # Capture d'écran
+        # Screenshot
         ", Print,       exec, grim -g \"$(slurp)\" - | wl-copy"
         "SHIFT, Print,  exec, grim - | wl-copy"
 
-        # Changement de layout clavier (AZERTY/QWERTY)
+        # Toggle keyboard layout (AZERTY/QWERTY)
         "$mod, Space,    exec, if hyprctl -j getoption input:kb_layout | grep -q '\"fr\"'; then hyprctl keyword input:kb_layout us; else hyprctl keyword input:kb_layout fr; fi"
 
       ];
 
-      # Touches multimédia
+      # Media keys
       bindel = [
         ", XF86AudioRaiseVolume,   exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"
         ", XF86AudioLowerVolume,   exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"
@@ -193,7 +191,7 @@
         ", XF86AudioPrev,  exec, playerctl previous"
       ];
 
-      # Souris
+      # Mouse
       bindm = [
         "$mod, mouse:272, movewindow"
         "$mod, mouse:273, resizewindow"

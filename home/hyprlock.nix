@@ -6,85 +6,104 @@
 
     settings = {
       general = {
-        disable_loading_bar = false;
-        grace = 5;
+        disable_loading_bar = true;
+        grace = 3;
         hide_cursor = true;
         no_fade_in = false;
+        no_fade_out = false;
       };
 
       background = [
         {
-          # Capture le bureau et applique un flou
+          # Blurred screenshot of the desktop
           path = "screenshot";
-          blur_size = 7;
+          blur_size = 6;
           blur_passes = 4;
-          noise = 0.012;
-          contrast = 0.89;
-          brightness = 0.82;
-          vibrancy = 0.17;
+          noise = 0.008;
+          contrast = 0.85;
+          brightness = 0.75;
+          vibrancy = 0.1;
           vibrancy_darkness = 0.0;
         }
       ];
 
-      # Horloge
+      # Time
       label = [
         {
           monitor = "";
           text = ''cmd[update:1000] echo "$(date +"%H:%M")"'';
-          color = "rgba(205, 214, 244, 1.0)";
-          font_size = 72;
-          font_family = "JetBrainsMono Nerd Font";
-          position = "0, 200";
+          color = "rgba(255, 255, 255, 0.92)";
+          font_size = 88;
+          font_family = "JetBrainsMono Nerd Font Bold";
+          position = "0, 180";
           halign = "center";
           valign = "center";
+          shadow_passes = 3;
+          shadow_size = 6;
+          shadow_color = "rgba(0, 0, 0, 0.4)";
         }
+        # Date
         {
           monitor = "";
-          text = ''cmd[update:60000] echo "$(date +"%A %d %B %Y")"'';
-          color = "rgba(166, 173, 200, 0.9)";
-          font_size = 18;
+          text = ''cmd[update:60000] echo "$(date +"%A, %B %d")"'';
+          color = "rgba(235, 235, 245, 0.55)";
+          font_size = 20;
           font_family = "JetBrainsMono Nerd Font";
-          position = "0, 130";
+          position = "0, 100";
           halign = "center";
           valign = "center";
         }
+        # Username
         {
           monitor = "";
           text = "$USER";
-          color = "rgba(166, 173, 200, 0.7)";
-          font_size = 14;
+          color = "rgba(235, 235, 245, 0.4)";
+          font_size = 13;
           font_family = "JetBrainsMono Nerd Font";
-          position = "0, -30";
+          position = "0, -48";
           halign = "center";
           valign = "center";
         }
       ];
 
-      # Champ de saisie du mot de passe
+      # Password input
       input-field = [
         {
           monitor = "";
-          size = "250, 50";
-          position = "0, -90";
+          size = "280, 52";
+          position = "0, -110";
           halign = "center";
           valign = "center";
 
-          outline_thickness = 3;
-          dots_size = 0.26;
-          dots_spacing = 0.64;
+          outline_thickness = 2;
+          dots_size = 0.22;
+          dots_spacing = 0.7;
           dots_center = true;
-          outer_color = "rgb(137, 180, 250)";
-          inner_color = "rgb(30, 30, 46)";
-          font_color = "rgb(205, 214, 244)";
-          fade_on_empty = false;
-          placeholder_text = "Mot de passe…";
+          dots_rounding = -1;
+
+          outer_color = "rgba(255, 255, 255, 0.12)";
+          inner_color = "rgba(22, 22, 24, 0.75)";
+          font_color = "rgba(255, 255, 255, 0.85)";
+          font_family = "JetBrainsMono Nerd Font";
+
+          fade_on_empty = true;
+          fade_timeout = 1000;
+          placeholder_text = "Password";
+
           hide_input = false;
-          check_color = "rgb(166, 227, 161)";
-          fail_color = "rgb(243, 139, 168)";
-          fail_text = "<i>Mot de passe incorrect</i>";
-          capslock_color = "rgb(249, 226, 175)";
-          shadow_passes = 2;
-          shadow_size = 3;
+          rounding = 14;
+
+          check_color = "rgb(48, 209, 88)";
+          fail_color = "rgb(255, 69, 58)";
+          fail_text = "Incorrect password";
+          fail_transition = 300;
+
+          capslock_color = "rgb(255, 159, 10)";
+          numlock_color = "rgb(10, 132, 255)";
+
+          shadow_passes = 3;
+          shadow_size = 8;
+          shadow_color = "rgba(0, 0, 0, 0.3)";
         }
       ];
     };

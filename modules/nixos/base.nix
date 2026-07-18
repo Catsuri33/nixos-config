@@ -1,34 +1,13 @@
 { config, pkgs, inputs, ... }:
-
 {
-  imports = [
-    ./hardware-configuration.nix
-  ];
-
-  # Paquets non-libres (Nvidia, Steam, VSCode...)
   nixpkgs.config.allowUnfree = true;
 
-  # Boot
   boot.loader.systemd-boot.enable = true;
   boot.loader.systemd-boot.configurationLimit = 5;
   boot.loader.efi.canTouchEfiVariables = true;
-  boot.kernelPackages = pkgs.linuxPackages_latest; # NTSync requis pour certains jeux (Linux 6.14+)
 
-  # Networking
-  networking.hostName = "asuslm";
   networking.networkmanager.enable = true;
 
-  # NFS client
-  services.rpcbind.enable = true;
-  boot.supportedFilesystems = [ "nfs" ];
-
-  fileSystems."/mnt/jellyfin" = {
-    device = "192.168.1.152:/tank/jellyfin/media";
-    fsType = "nfs";
-    options = [ "nfsvers=4" "noatime" "x-systemd.automount" "noauto" "x-systemd.idle-timeout=600" ];
-  };
-
-  # Locale
   time.timeZone = "Europe/Paris";
   i18n.defaultLocale = "fr_FR.UTF-8";
   i18n.supportedLocales = [ "fr_FR.UTF-8/UTF-8" "en_US.UTF-8/UTF-8" ];
@@ -39,10 +18,8 @@
     LC_TIME = "fr_FR.UTF-8";
   };
 
-  # Clavier console
   console.keyMap = "fr";
 
-  # Utilisateur
   users.users.lmichault = {
     isNormalUser = true;
     extraGroups = [ "wheel" "networkmanager" "video" "audio" ];
@@ -50,22 +27,6 @@
     initialPassword = "tobechanged";
   };
 
-  # GPU Nvidia
-  hardware.graphics = {
-    enable = true;
-    enable32Bit = true;
-  };
-
-  services.xserver.videoDrivers = [ "nvidia" ];
-
-  hardware.nvidia = {
-    modesetting.enable = true;
-    open = false;
-    nvidiaSettings = true;
-    package = config.boot.kernelPackages.nvidiaPackages.stable;
-  };
-
-  # Hyprland
   programs.hyprland = {
     enable = true;
     withUWSM = true;
@@ -81,14 +42,6 @@
     };
   };
 
-  # Steam
-  programs.steam = {
-    enable = true;
-    remotePlay.openFirewall = true;
-    gamescopeSession.enable = true;
-  };
-
-  # Display manager (tuigreet)
   services.greetd = {
     enable = true;
     settings = {
@@ -99,14 +52,12 @@
     };
   };
 
-  # Bluetooth
   hardware.bluetooth = {
     enable = true;
     powerOnBoot = true;
   };
   services.blueman.enable = true;
 
-  # Son via PipeWire
   security.rtkit.enable = true;
   services.pipewire = {
     enable = true;
@@ -116,16 +67,15 @@
     wireplumber.enable = true;
   };
 
-  # Portails XDG (partage d'écran, etc.)
+  # XDG portals (screen sharing, file picker, etc.)
   xdg.portal = {
     enable = true;
-    extraPortals = [ pkgs.xdg-desktop-portal-hyprland ];
+    extraPortals = [ pkgs.xdg-desktop-portal-hyprland pkgs.xdg-desktop-portal-gtk ];
+    configPackages = [ pkgs.hyprland ];
   };
 
-  # Polkit (élévation de privilèges)
   security.polkit.enable = true;
 
-  # Fonts
   fonts.packages = with pkgs; [
     nerd-fonts.jetbrains-mono
     noto-fonts
@@ -136,12 +86,8 @@
     git
     wget
     curl
-    nvtopPackages.nvidia
-    protonplus  # gestionnaire de versions Proton (DW-Proton, GE-Proton, etc.)
-    inputs.kopuz.packages.${pkgs.system}.default
   ];
 
-  # Nettoyage automatique des anciennes générations
   nix.gc = {
     automatic = true;
     dates = "weekly";
@@ -150,12 +96,9 @@
 
   nix.settings = {
     auto-optimise-store = true;
-    substituters = [ "https://cache.nixos.org" "https://kopuz.cachix.org" ];
+    substituters = [ "https://cache.nixos.org" ];
     trusted-public-keys = [
       "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
-      "kopuz.cachix.org-1:J2X3AnAYhKTJW5S3aCLoA1ckonQXVNZMQvhZA0YAufw="
     ];
   };
-
-  system.stateVersion = "24.11";
 }
