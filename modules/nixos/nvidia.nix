@@ -9,7 +9,11 @@
 
   hardware.nvidia = {
     modesetting.enable = true;
-    open = false;
+    # Open-source kernel modules: needed for Secure Boot (unsigned
+    # proprietary blobs won't load under lockdown), confirmed supported on
+    # laptop-gaming's RTX 3050 Ti (Ampere/GA107, Turing+). Check the GPU
+    # generation on any new host before relying on this.
+    open = true;
     nvidiaSettings = true;
     package = config.boot.kernelPackages.nvidiaPackages.stable;
   };

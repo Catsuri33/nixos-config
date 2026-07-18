@@ -17,9 +17,14 @@
       url = "github:nix-community/disko";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    lanzaboote = {
+      url = "github:nix-community/lanzaboote";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, home-manager, hyprland, vicinae, disko, ... }@inputs:
+  outputs = { self, nixpkgs, home-manager, hyprland, vicinae, disko, lanzaboote, ... }@inputs:
   let
     system = "x86_64-linux";
 
@@ -43,6 +48,11 @@
       # /dev/mapper/cryptroot, which doesn't exist until the physical LUKS
       # reinstall happens. Add the two lines back (see desktop-gaming below
       # for the pattern) only right before doing that reinstall.
+      #
+      # Same reasoning for lanzaboote.nixosModules.lanzaboote +
+      # ./modules/nixos/secureboot.nix (Secure Boot): needs a manual key
+      # enrollment step (sbctl) first — see README.md. Add both lines back
+      # once that's done.
       laptop-gaming = nixpkgs.lib.nixosSystem {
         inherit system;
         specialArgs = { inherit inputs; };
@@ -64,6 +74,8 @@
         modules = [
           disko.nixosModules.disko
           ./hosts/desktop-gaming/disko.nix
+          lanzaboote.nixosModules.lanzaboote
+          ./modules/nixos/secureboot.nix
           ./hosts/desktop-gaming/configuration.nix
           home-manager.nixosModules.home-manager
           (mkHome [
@@ -80,6 +92,8 @@
         modules = [
           disko.nixosModules.disko
           ./hosts/laptop-light/disko.nix
+          lanzaboote.nixosModules.lanzaboote
+          ./modules/nixos/secureboot.nix
           ./hosts/laptop-light/configuration.nix
           home-manager.nixosModules.home-manager
           (mkHome [

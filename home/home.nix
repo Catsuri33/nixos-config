@@ -5,6 +5,7 @@
     ./hyprland.nix
     ./waybar.nix
     ./hyprlock.nix
+    ./dunst.nix
   ];
 
   home.username = "lmichault";
@@ -18,8 +19,7 @@
     # Terminal
     kitty
 
-    # Notifications
-    dunst
+    # Notifications (dunst itself is installed by services.dunst, see dunst.nix)
     libnotify
 
     # Wayland utilities
@@ -40,7 +40,7 @@
     nautilus
 
     # Browser
-    firefox
+    librewolf
 
     # Communication
     discord
