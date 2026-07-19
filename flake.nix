@@ -40,23 +40,26 @@
     nixosConfigurations = {
 
       # Gaming laptop (Nvidia, Wine, Steam)
-      # NOTE: disko.nixosModules.disko + ./hosts/laptop-gaming/disko.nix are
-      # deliberately NOT wired in here yet. This host is live, boots from a
-      # plain ext4 root today, and system.autoUpgrade runs `nixos-rebuild
-      # switch` weekly (modules/nixos/base.nix) — wiring disko now would make
-      # the next auto-upgrade activate a config expecting
-      # /dev/mapper/cryptroot, which doesn't exist until the physical LUKS
-      # reinstall happens. Add the two lines back (see desktop-gaming below
-      # for the pattern) only right before doing that reinstall.
+      # disko is now wired in ahead of the physical LUKS reinstall (see
+      # README.md for the runbook). Until that reinstall actually happens,
+      # this host still boots from plain ext4 and `hosts/laptop-gaming/
+      # hardware-configuration.nix` still declares the old plaintext
+      # fileSystems — building/switching this config before the reinstall
+      # will fail on conflicting fileSystems."/" definitions, which is a
+      # safe failure (current running system is untouched). Do NOT run
+      # `nixos-rebuild switch` (including the weekly system.autoUpgrade)
+      # against this host until right after the disko + nixos-install step.
       #
-      # Same reasoning for lanzaboote.nixosModules.lanzaboote +
-      # ./modules/nixos/secureboot.nix (Secure Boot): needs a manual key
-      # enrollment step (sbctl) first — see README.md. Add both lines back
+      # lanzaboote.nixosModules.lanzaboote + ./modules/nixos/secureboot.nix
+      # (Secure Boot) are still deliberately NOT wired in — needs a manual
+      # key enrollment step (sbctl) first, see README.md. Add both lines
       # once that's done.
       laptop-gaming = nixpkgs.lib.nixosSystem {
         inherit system;
         specialArgs = { inherit inputs; };
         modules = [
+          disko.nixosModules.disko
+          ./hosts/laptop-gaming/disko.nix
           ./hosts/laptop-gaming/configuration.nix
           home-manager.nixosModules.home-manager
           (mkHome [
@@ -98,6 +101,7 @@
           home-manager.nixosModules.home-manager
           (mkHome [
             ./modules/home/laptop.nix
+            ./modules/home/laptop-light.nix
           ])
         ];
       };

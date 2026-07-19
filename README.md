@@ -46,7 +46,7 @@ sudo nixos-rebuild switch --flake .#<name>
 
 | Host | Swap | Disk encryption |
 |------|------|------------------|
-| `laptop-gaming` | zram (encrypted-in-effect, RAM-only) | plain ext4 — LUKS reinstall planned, not yet applied |
+| `laptop-gaming` | zram (encrypted-in-effect, RAM-only) | plain ext4 — disko wired in, LUKS reinstall not yet applied |
 | `desktop-gaming` | zram | not installed yet — will be LUKS from first install |
 | `laptop-light` | zram | not installed yet — will be LUKS from first install |
 
@@ -68,15 +68,17 @@ layout: an unencrypted ESP (`/boot`) + a LUKS2 partition containing ext4
   live ISO will produce a LUKS-encrypted root from the start. **The `device`
   path in each `disko.nix` is a placeholder — check the real disk with
   `lsblk` from the live ISO and edit it before running disko.**
-- **laptop-gaming**: `hosts/laptop-gaming/disko.nix` exists but is
-  deliberately **not** wired into `flake.nix` yet. This host is live and
-  currently boots from plain ext4; `system.autoUpgrade` runs
-  `nixos-rebuild switch` weekly, so wiring disko in now would make the next
-  auto-upgrade activate a config expecting `/dev/mapper/cryptroot`, which
-  doesn't exist until the physical reinstall happens — that would break the
-  next boot. Only add the two lines back to `flake.nix` (see
-  `desktop-gaming` for the pattern) immediately before doing that reinstall,
-  after backing up anything not tracked by this repo (SSH/GPG keys,
+- **laptop-gaming**: `disko.nixosModules.disko` and
+  `hosts/laptop-gaming/disko.nix` are now wired into `flake.nix`, ahead of
+  the physical reinstall. This host is still live on plain ext4 today, and
+  `hosts/laptop-gaming/hardware-configuration.nix` still declares the old
+  plaintext `fileSystems`, so building/switching this config
+  (`nixos-rebuild build/switch`, including the weekly `system.autoUpgrade`)
+  fails on a conflicting `fileSystems."/".device` definition — confirmed
+  safe: the build errors out before touching the running system, it does
+  not brick anything. Still, **do not run `nixos-rebuild switch` against
+  `laptop-gaming` until immediately after the disko + `nixos-install` step**
+  — after backing up anything not tracked by this repo (SSH/GPG keys,
   non-home-manager files in `$HOME`).
 
 Install flow (fresh machine or after backing up `laptop-gaming`):

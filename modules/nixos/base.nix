@@ -64,13 +64,52 @@
   };
 
   # DNS-over-TLS (Quad9: privacy-respecting, filters known-malicious domains).
+  # IPv4 only: ProtonVPN's IPv6 leak-protection blackholes all IPv6 while
+  # connected (its own dummy "leak" interface, by design), so an IPv6 DNS
+  # server here would silently time out instead of failing over, making
+  # resolution randomly hang whenever resolved picked the IPv6 address.
   services.resolved = {
     enable = true;
     settings.Resolve = {
-      DNS = "9.9.9.9#dns.quad9.net 2620:fe::fe#dns.quad9.net";
+      DNS = "9.9.9.9#dns.quad9.net";
       DNSOverTLS = "yes";
+      DNSSEC = "allow-downgrade";
     };
   };
+
+  # DNS-over-TLS keeps a persistent TCP/TLS session open to 9.9.9.9. When
+  # ProtonVPN's killswitch rewrites the routing tables on connect/disconnect,
+  # that existing session keeps trying to use the now-stale route instead of
+  # failing fast, so lookups hang until resolved eventually gives up and
+  # reconnects. Force a clean restart right when the tunnel interface
+  # appears/disappears so it always opens a fresh connection under the
+  # current routing rules.
+  #
+  # Root cause of the "no DNS at all while connected" bug: proton0 comes up
+  # with its own pushed resolver (10.2.0.1) and a "~." routing domain, which
+  # makes it a competing resolution scope for every lookup, not just a
+  # fallback. Proton's resolver doesn't speak DNS-over-TLS, and DNSOverTLS
+  # is set to "yes" (mandatory, no plaintext fallback) above, so any query
+  # resolved routes through that scope hangs forever waiting for a TLS
+  # handshake the server will never complete. Clearing proton0's own DNS/
+  # domain once it's up forces all resolution through the global Quad9 DoT
+  # server instead. The clear runs after a short delay so it wins the race
+  # against NetworkManager re-pushing that DNS config during activation.
+  networking.networkmanager.dispatcherScripts = [
+    {
+      type = "basic";
+      source = pkgs.writeShellScript "protonvpn-resolved-restart" ''
+        if [ "$1" = "proton0" ] && { [ "$2" = "up" ] || [ "$2" = "down" ]; }; then
+          systemctl restart systemd-resolved.service
+        fi
+        if [ "$1" = "proton0" ] && [ "$2" = "up" ]; then
+          sleep 2
+          resolvectl dns proton0 ""
+          resolvectl domain proton0 ""
+        fi
+      '';
+    }
+  ];
 
   # Wi-Fi MAC randomization: one random-but-stable MAC per SSID (mirrors
   # Android/GrapheneOS's default), plus always-randomized scan probes.
@@ -120,9 +159,16 @@
 
   hardware.bluetooth = {
     enable = true;
-    powerOnBoot = true;
+    # Off by default at boot; toggled on manually via the waybar module.
+    powerOnBoot = false;
   };
   services.blueman.enable = true;
+  # Disable the blueman applet (duplicate tray icon): keep the
+  # daemon/blueman-manager, our custom waybar module already shows status.
+  environment.etc."xdg/autostart/blueman.desktop".text = ''
+    [Desktop Entry]
+    Hidden=true
+  '';
 
   security.rtkit.enable = true;
   services.pipewire = {
@@ -153,7 +199,22 @@
     wget
     curl
     wireguard-tools
+    openssl
+    dnsutils
+
+    # Dev tooling
+    uv
+    nodejs
+    pnpm
   ];
+
+  # Rootless Docker: daemon runs as the user (no root-owned socket/daemon),
+  # containers are mapped into the user's subuid/subgid range instead of
+  # real root. DOCKER_HOST is exported automatically for normal users.
+  virtualisation.docker.rootless = {
+    enable = true;
+    setSocketVariable = true;
+  };
 
   nix.gc = {
     automatic = true;

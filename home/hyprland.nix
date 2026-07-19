@@ -13,7 +13,6 @@
         "uwsm app -- $HOME/.local/bin/wallpaper-rotate"
         "uwsm app -- waybar"
         "uwsm app -- nm-applet --indicator"
-        "uwsm app -- blueman-applet"
         "uwsm app -- vicinae server"
       ];
 

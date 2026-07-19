@@ -1,4 +1,4 @@
-# Générer avec : nixos-generate-config --show-hardware-config
+# Generate with: nixos-generate-config --show-hardware-config
 { ... }:
 {
   boot.initrd.availableKernelModules = [];

@@ -90,7 +90,7 @@
           fade_timeout = 1000;
           placeholder_text = "Password";
 
-          hide_input = false;
+          hide_input = true;
           rounding = 14;
 
           check_color = "rgb(48, 209, 88)";

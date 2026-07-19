@@ -1,5 +1,22 @@
 { config, pkgs, ... }:
 
+let
+  bluetoothStatus = pkgs.writeShellScript "waybar-bluetooth" ''
+    if ! ${pkgs.bluez}/bin/bluetoothctl show | grep -q "Powered: yes"; then
+      echo '{"text":"󰂲","class":"off","tooltip":"Bluetooth off"}'
+      exit 0
+    fi
+
+    connected=$(${pkgs.bluez}/bin/bluetoothctl devices Connected | sed -E 's/^Device [0-9A-F:]+ //')
+    if [ -n "$connected" ]; then
+      tooltip=$(echo "$connected" | paste -sd ', ')
+      echo "{\"text\":\"󰂱\",\"class\":\"connected\",\"tooltip\":\"$tooltip\"}"
+    else
+      echo '{"text":"󰂯","class":"on","tooltip":"Bluetooth on, no device connected"}'
+    fi
+  '';
+in
+
 {
   programs.waybar = {
     enable = true;
@@ -16,7 +33,7 @@
 
         modules-left   = [ "hyprland/workspaces" ];
         modules-center = [ "clock" ];
-        modules-right  = [ "pulseaudio" "network" "battery" "tray" ];
+        modules-right  = [ "pulseaudio" "network" "custom/bluetooth" "battery" "tray" ];
 
         "hyprland/workspaces" = {
           disable-scroll = true;
@@ -44,11 +61,19 @@
         };
 
         "network" = {
-          format-wifi       = "  {essid}";
+          format-wifi       = "{icon}  {essid}";
+          format-icons      = [ "󰤟" "󰤢" "󰤥" "󰤨" ];
           format-ethernet   = "󰈀 {ipaddr}";
           format-disconnected = "󰤭";
           tooltip-format    = "{ifname}: {ipaddr}\n{gwaddr}";
           on-click          = "nm-connection-editor";
+        };
+
+        "custom/bluetooth" = {
+          exec = "${bluetoothStatus}";
+          return-type = "json";
+          interval = 5;
+          on-click = "${pkgs.blueman}/bin/blueman-manager";
         };
 
         "pulseaudio" = {
@@ -127,6 +152,7 @@
       /* Right modules */
       #battery,
       #network,
+      #custom-bluetooth,
       #pulseaudio {
         padding: 0 10px;
         color: rgba(235, 235, 245, 0.75);
@@ -149,6 +175,9 @@
 
       #network.disconnected { color: rgba(235, 235, 245, 0.25); }
       #pulseaudio.muted     { color: rgba(235, 235, 245, 0.25); }
+
+      #custom-bluetooth.connected { color: #0a84ff; }
+      #custom-bluetooth.off       { color: rgba(235, 235, 245, 0.25); }
 
       tooltip {
         background: rgba(28, 28, 30, 0.96);
