@@ -201,6 +201,7 @@
     wireguard-tools
     openssl
     dnsutils
+    unzip
 
     # Dev tooling
     uv

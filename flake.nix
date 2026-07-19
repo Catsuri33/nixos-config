@@ -60,6 +60,8 @@
         modules = [
           disko.nixosModules.disko
           ./hosts/laptop-gaming/disko.nix
+          lanzaboote.nixosModules.lanzaboote
+          ./modules/nixos/secureboot.nix
           ./hosts/laptop-gaming/configuration.nix
           home-manager.nixosModules.home-manager
           (mkHome [

@@ -91,8 +91,8 @@ nixos-install --flake .#<name>
 
 ```bash
 # after first boot, enroll TPM2 auto-unlock + a recovery key
-sudo systemd-cryptenroll --tpm2-device=auto /dev/disk/by-partlabel/luks
-sudo systemd-cryptenroll --recovery-key /dev/disk/by-partlabel/luks
+sudo systemd-cryptenroll --tpm2-device=auto /dev/disk/by-partlabel/disk-main-luks
+sudo systemd-cryptenroll --recovery-key /dev/disk/by-partlabel/disk-main-luks
 ```
 
 Keep the recovery key somewhere off-machine (password manager, paper) — a

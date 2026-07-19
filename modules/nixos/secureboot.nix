@@ -10,7 +10,9 @@
 
   boot.lanzaboote = {
     enable = true;
-    pkiBundle = "/etc/secureboot";
+    # sbctl's actual default key location (not /etc/secureboot — sbctl 0.18
+    # writes there unless told otherwise via --database-path/config file).
+    pkiBundle = "/var/lib/sbctl";
   };
 
   environment.systemPackages = [ pkgs.sbctl ];
