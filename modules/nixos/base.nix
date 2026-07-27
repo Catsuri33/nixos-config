@@ -132,10 +132,15 @@
 
   console.keyMap = "fr";
 
+  # zsh enabled system-wide so it lands in /etc/shells (required for it to
+  # be a valid login shell) — actual dotfile config lives in home-manager
+  # (home/home.nix, programs.zsh).
+  programs.zsh.enable = true;
+
   users.users.lmichault = {
     isNormalUser = true;
     extraGroups = [ "wheel" "networkmanager" "video" "audio" ];
-    shell = pkgs.bash;
+    shell = pkgs.zsh;
     initialPassword = "tobechanged";
   };
 

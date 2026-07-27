@@ -127,9 +127,14 @@
       };
     };
 
-    programs.bash = {
+    # zsh-autosuggestions (fish-like greyed-out completion from history) +
+    # syntax highlighting + Tab completion.
+    programs.zsh = {
       enable = true;
-      initExtra = ''
+      autosuggestion.enable = true;
+      syntaxHighlighting.enable = true;
+      enableCompletion = true;
+      initContent = ''
         export GPG_TTY=$(tty)
       '';
     };
