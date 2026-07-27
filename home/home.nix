@@ -120,7 +120,11 @@
 
     programs.kitty = {
       enable = true;
-      settings.confirm_os_window_close = 0;
+      settings = {
+        confirm_os_window_close = 0;
+        # Needed for starship's prompt icons (folder, git branch, etc).
+        font_family = "JetBrainsMono Nerd Font";
+      };
     };
 
     programs.bash = {
@@ -128,6 +132,63 @@
       initExtra = ''
         export GPG_TTY=$(tty)
       '';
+    };
+
+    # Two-line, git-aware prompt (replaces the old "[user@host:path]$").
+    programs.starship = {
+      enable = true;
+      settings = {
+        add_newline = true;
+
+        format = ''
+          [┌─](bold green)$username$hostname$directory$git_branch$git_status$fill$time
+          [└─❯](bold green) '';
+
+        fill.symbol = " ";
+
+        username = {
+          show_always = true;
+          style_user = "bold blue";
+          style_root = "bold red";
+          format = "[$user]($style)";
+        };
+
+        hostname = {
+          ssh_only = false;
+          style = "bold blue";
+          format = "[@$hostname]($style) ";
+        };
+
+        directory = {
+          style = "bold cyan";
+          truncation_length = 3;
+          truncate_to_repo = true;
+          format = "[󰉋 $path]($style)[$read_only]($read_only_style) ";
+        };
+
+        git_branch = {
+          symbol = " ";
+          style = "bold purple";
+          format = "[on](white) [$symbol$branch]($style) ";
+        };
+
+        git_status = {
+          style = "bold red";
+          format = "([$all_status$ahead_behind]($style) )";
+        };
+
+        time = {
+          disabled = false;
+          style = "bold yellow";
+          time_format = "%H:%M";
+          format = "[$time]($style)";
+        };
+
+        character = {
+          success_symbol = "[❯](bold green)";
+          error_symbol = "[❯](bold red)";
+        };
+      };
     };
 
     services.gpg-agent = {
