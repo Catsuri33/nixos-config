@@ -212,6 +212,7 @@
     uv
     nodejs
     pnpm
+    opentofu
   ];
 
   # Rootless Docker: daemon runs as the user (no root-owned socket/daemon),
