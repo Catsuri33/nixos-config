@@ -93,8 +93,16 @@
   # resolved routes through that scope hangs forever waiting for a TLS
   # handshake the server will never complete. Clearing proton0's own DNS/
   # domain once it's up forces all resolution through the global Quad9 DoT
-  # server instead. The clear runs after a short delay so it wins the race
-  # against NetworkManager re-pushing that DNS config during activation.
+  # server instead. NetworkManager keeps re-pushing proton0's own
+  # DNS/domain config for as long as the connection is active, not just
+  # once at startup — confirmed in practice: even a 10-second retry loop
+  # still lost eventually. Run a loop that keeps re-clearing for as long
+  # as proton0 exists, and launch it via systemd-run rather than a plain
+  # backgrounded shell job — nm-dispatcher runs this script inside
+  # NetworkManager-dispatcher.service's own cgroup, which stops within
+  # ~10-20s of the script returning (confirmed via journalctl), killing
+  # any child left in that cgroup. systemd-run detaches the loop into its
+  # own transient unit so it survives past that.
   networking.networkmanager.dispatcherScripts = [
     {
       type = "basic";
@@ -103,9 +111,13 @@
           systemctl restart systemd-resolved.service
         fi
         if [ "$1" = "proton0" ] && [ "$2" = "up" ]; then
-          sleep 2
-          resolvectl dns proton0 ""
-          resolvectl domain proton0 ""
+          ${pkgs.systemd}/bin/systemd-run --collect --unit=protonvpn-dns-clear ${pkgs.bash}/bin/bash -c '
+            while ${pkgs.iproute2}/bin/ip link show proton0 >/dev/null 2>&1; do
+              resolvectl dns proton0 ""
+              resolvectl domain proton0 ""
+              sleep 2
+            done
+          '
         fi
       '';
     }
