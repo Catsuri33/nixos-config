@@ -6,6 +6,7 @@
   ];
 
   networking.hostName = "laptop-light";
+  hardware.enableRedistributableFirmware = true;
 
   # Lets wireshark capture packets without running as root (dumpcap gets
   # CAP_NET_RAW/CAP_NET_ADMIN, restricted to the wireshark group).
