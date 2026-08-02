@@ -225,6 +225,15 @@
     nodejs
     pnpm
     opentofu
+
+    # Rust (gcc provides the linker cargo/rustc need at build time)
+    cargo
+    rustc
+    rust-analyzer
+    clippy
+    rustfmt
+    pkg-config
+    gcc
   ];
 
   # Rootless Docker: daemon runs as the user (no root-owned socket/daemon),
