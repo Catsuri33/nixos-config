@@ -132,6 +132,16 @@
 
   networking.networkmanager.enable = true;
 
+  # Jellyfin NAS media share, mounted on-demand for all hosts.
+  services.rpcbind.enable = true;
+  boot.supportedFilesystems = [ "nfs" ];
+
+  fileSystems."/mnt/jellyfin" = {
+    device = "192.168.1.152:/tank/jellyfin/media";
+    fsType = "nfs";
+    options = [ "nfsvers=4" "noatime" "x-systemd.automount" "noauto" "x-systemd.idle-timeout=600" ];
+  };
+
   time.timeZone = "Europe/Paris";
   i18n.defaultLocale = "fr_FR.UTF-8";
   i18n.supportedLocales = [ "fr_FR.UTF-8/UTF-8" "en_US.UTF-8/UTF-8" ];
