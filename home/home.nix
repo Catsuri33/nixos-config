@@ -77,6 +77,13 @@
       # Editor
       vscode
       claude-code
+
+      # AppImage support. appimage-run's default FHS wrapper only bundles a
+      # minimal library set; Tauri-based AppImages need webkit2gtk at
+      # runtime (libwebkit2gtk-4.1.so.0), which isn't included by default.
+      (appimage-run.override {
+        extraPkgs = pkgs: [ pkgs.webkitgtk_4_1 ];
+      })
     ];
 
     # Wayland environment variables
