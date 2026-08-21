@@ -203,7 +203,20 @@
     alsa.enable = true;
     alsa.support32Bit = true;
     pulse.enable = true;
-    wireplumber.enable = true;
+    wireplumber = {
+      enable = true;
+      # Keep Bluetooth headsets on the high-quality A2DP profile even
+      # while an app (e.g. Discord) opens a mic stream. Without this,
+      # WirePlumber auto-switches to the low-quality mono HSP/HFP
+      # profile whenever a microphone is requested, degrading music
+      # playback too. Only sensible because we use a non-Bluetooth mic
+      # (the headset's own mic won't work while forced onto A2DP).
+      extraConfig."51-bluetooth-no-autoswitch" = {
+        "wireplumber.settings" = {
+          "bluetooth.autoswitch-to-headset-profile" = false;
+        };
+      };
+    };
   };
 
   # XDG portals (screen sharing, file picker, etc.)

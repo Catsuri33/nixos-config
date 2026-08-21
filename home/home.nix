@@ -143,6 +143,14 @@
       enableCompletion = true;
       initContent = ''
         export GPG_TTY=$(tty)
+
+        # kitty sets TERM=xterm-kitty, which most remote hosts don't have a
+        # terminfo entry for (breaks clear/tput/vim etc over SSH). kitty's
+        # ssh kitten auto-installs its terminfo on the remote on first
+        # connect, so alias plain ssh to it.
+        if command -v kitty >/dev/null 2>&1 && [ "$TERM" = "xterm-kitty" ]; then
+          alias ssh="kitty +kitten ssh"
+        fi
       '';
     };
 
