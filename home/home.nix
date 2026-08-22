@@ -36,6 +36,8 @@
       grim
       slurp
       wl-clipboard
+      wf-recorder
+      hyprpicker
 
       # Media / volume
       brightnessctl

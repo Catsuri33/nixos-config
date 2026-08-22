@@ -26,6 +26,27 @@
   systemd.coredump.enable = false;
   services.fwupd.enable = true;
 
+  # AppArmor LSM framework (GrapheneOS-style app confinement). This only
+  # turns the framework on — nixpkgs ships few AppArmor profiles by default,
+  # so actually confining a given app (browser, Discord, third-party
+  # AppImages) still requires adding a profile for it.
+  security.apparmor.enable = true;
+
+  # SMART disk health monitoring: catch a failing drive via its pre-failure
+  # attributes before it actually dies. No mail server is configured on any
+  # host, so notify via `wall` (broadcast to logged-in terminals) instead of
+  # email.
+  services.smartd = {
+    enable = true;
+    notifications.wall.enable = true;
+  };
+
+  # Weekly TRIM instead of continuous `discard` on the LUKS-backed SSDs:
+  # continuous discard leaks some used/free block info on the encrypted
+  # volume and costs a bit of perf on every delete, so a batched weekly trim
+  # is the standard security/performance compromise.
+  services.fstrim.enable = true;
+
   # USBGuard: block newly-inserted USB devices by default (evil-maid/BadUSB
   # protection on an unattended machine), but auto-allow whatever's already
   # plugged in at boot (built-in keyboard/trackpad/webcam included) so it

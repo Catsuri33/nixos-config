@@ -47,4 +47,13 @@
     # Network analysis
     wireshark
   ];
+
+  # This laptop's keyboard has no dedicated "Impr écran" key, so the
+  # Print/Shift+Print binds in home/hyprland.nix are unreachable here.
+  # Software-only equivalents on $mod so screenshots work regardless of
+  # physical keyboard layout.
+  wayland.windowManager.hyprland.settings.bind = [
+    "$mod, S,       exec, grim -g \"$(slurp)\" - | wl-copy"
+    "$mod SHIFT, S, exec, grim - | wl-copy"
+  ];
 }

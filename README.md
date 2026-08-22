@@ -123,6 +123,20 @@ which historically lags upstream Chromium security patches in nixpkgs).
 - `security.protectKernelImage`, `security.sudo.execWheelOnly`,
   `systemd.coredump.enable = false`, `services.fwupd.enable` (firmware
   security updates).
+- `security.apparmor.enable` — turns on the AppArmor LSM framework
+  (GrapheneOS-style app confinement). This only enables the framework:
+  nixpkgs ships few AppArmor profiles by default, so confining a specific
+  app (browser, Discord, third-party AppImages) still needs a profile added
+  for it.
+- `services.smartd` with `notifications.wall.enable` — SMART disk health
+  monitoring, so a failing drive's pre-failure attributes show up as a
+  warning before it actually dies. No mail server is configured on any
+  host, so `wall` (broadcast to logged-in terminals) is used instead of
+  email.
+- `services.fstrim.enable` — weekly TRIM instead of continuous `discard` on
+  the LUKS-backed SSDs: continuous discard leaks some used/free block info
+  on the encrypted volume and costs perf on every delete, so a batched
+  weekly trim is the standard security/performance compromise.
 - `environment.memoryAllocator.provider = "graphene-hardened"` —
   `hardened_malloc`, GrapheneOS's own memory allocator, packaged natively in
   NixOS. `modules/nixos/gaming.nix` overrides this to
@@ -190,6 +204,13 @@ To allow a new device after the fact:
 usbguard list-devices          # find its id
 sudo usbguard allow-device <id> -p   # -p persists the rule
 ```
+
+## Desktop utilities
+
+- **Screenshots** — `grim` + `slurp` (`Print` for a region, `Shift+Print`
+  for the full screen), copied to the clipboard via `wl-clipboard`.
+- **Screen recording** — `wf-recorder`.
+- **Color picker** — `hyprpicker`.
 
 ## Wallpapers
 
