@@ -11,6 +11,7 @@
       exec-once = [
         "uwsm app -- awww-daemon"
         "uwsm app -- $HOME/.local/bin/wallpaper-rotate"
+        "uwsm app -- $HOME/.local/bin/wallpaper-monitor-watch"
         "uwsm app -- waybar"
         "uwsm app -- nm-applet --indicator"
         "uwsm app -- vicinae server"

@@ -259,6 +259,7 @@
     git
     wget
     curl
+    grpcurl
     wireguard-tools
     openssl
     dnsutils

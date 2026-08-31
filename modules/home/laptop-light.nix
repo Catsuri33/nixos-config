@@ -25,6 +25,14 @@
   # compositing/video decode in the browser, CPU rendering only. Scoped to
   # this package only, not /run/opengl-driver, so nothing else on the
   # system is affected.
+  #
+  # MOZ_WEBRENDER=0: separate bug — images/video rendering as horizontal
+  # stripes of corrupted pixels. SWGL (the software fallback above) still
+  # runs WebRender's tiling/texture-atlas code, which has a known corruption
+  # bug independent of GPU vs. software rendering. Disabling WebRender
+  # falls back to Firefox's older Basic compositor instead, which avoids
+  # that code path entirely. Same fix applied on the Nvidia hosts
+  # (modules/home/nvidia.nix), where the same stripe bug was seen.
   custom.librewolfPackage = pkgs.symlinkJoin {
     name = "librewolf-no-egl";
     paths = [ pkgs.librewolf ];
@@ -33,7 +41,8 @@
       wrapProgram $out/bin/librewolf \
         --set __EGL_VENDOR_LIBRARY_FILENAMES /no-such-egl-vendor.json \
         --set VK_DRIVER_FILES /no-such-vulkan-icd.json \
-        --set VK_ICD_FILENAMES /no-such-vulkan-icd.json
+        --set VK_ICD_FILENAMES /no-such-vulkan-icd.json \
+        --set MOZ_WEBRENDER 0
     '';
   };
 
@@ -52,8 +61,27 @@
   # Print/Shift+Print binds in home/hyprland.nix are unreachable here.
   # Software-only equivalents on $mod so screenshots work regardless of
   # physical keyboard layout.
+  #
+  # $mod+O / $mod SHIFT+O: switch focus to / move the active window to the
+  # other monitor. Needed once the USB-C dock is plugged in (see workspace
+  # pinning below for the other half of the multi-monitor setup).
   wayland.windowManager.hyprland.settings.bind = [
     "$mod, S,       exec, grim -g \"$(slurp)\" - | wl-copy"
     "$mod SHIFT, S, exec, grim - | wl-copy"
+    "$mod, O,       focusmonitor, +1"
+    "$mod SHIFT, O, movewindow, mon:+1"
   ];
+
+  # Pin workspaces to a monitor so switching workspace never "steals" it from
+  # the other screen (default Hyprland behaviour: activating a workspace that
+  # already lives on the other monitor just moves focus over there, which
+  # feels like both screens changed since input suddenly goes to the other
+  # monitor). 1-5 stay on the laptop panel, 6-10 on the docked monitor.
+  #
+  # Matched by description (not "DP-1"/"DP-2"/etc.) because the connector
+  # name Hyprland assigns to the dock's output depends on which USB-C port
+  # it's plugged into and isn't stable across replugs.
+  wayland.windowManager.hyprland.settings.workspace =
+    (map (i: "${toString i}, monitor:eDP-1, persistent:true" + (if i == 1 then ", default:true" else "")) [ 1 2 3 4 5 ])
+    ++ (map (i: "${toString i}, monitor:desc:Dell Inc. DELL P2422HE BGNCYB3, persistent:true" + (if i == 6 then ", default:true" else "")) [ 6 7 8 9 10 ]);
 }

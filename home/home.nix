@@ -245,6 +245,35 @@
       '';
     };
 
+    # Reapplies the current wallpaper to any monitor that shows up after
+    # login (e.g. a USB-C dock plugged in later) — awww-daemon otherwise
+    # just leaves newly-added outputs black until the next 10-minute
+    # wallpaper-rotate tick. Listens on Hyprland's event socket instead of
+    # polling; see https://wiki.hyprland.org/IPC/.
+    home.file.".local/bin/wallpaper-monitor-watch" = {
+      executable = true;
+      source = pkgs.writeShellScript "wallpaper-monitor-watch" ''
+        ${pkgs.socat}/bin/socat -U - UNIX-CONNECT:"$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock" |
+        while IFS= read -r line; do
+          case "$line" in
+            monitoraddedv2*)
+              data="''${line#*>>}"
+              name="''${data#*,}"
+              name="''${name%%,*}"
+
+              # Give awww-daemon a moment to register the new output before targeting it.
+              sleep 1
+
+              img=$(${pkgs.awww}/bin/awww query 2>/dev/null | ${pkgs.gnused}/bin/sed -n 's/.*image: //p' | head -n1)
+              if [ -n "$img" ] && [ -n "$name" ]; then
+                ${pkgs.awww}/bin/awww img "$img" -o "$name"
+              fi
+              ;;
+          esac
+        done
+      '';
+    };
+
     systemd.user = {
       services.wallpaper-rotate = {
         Unit = {

@@ -27,13 +27,20 @@
   # needs Mesa's EGL vendor (e.g. software/llvmpipe fallback paths), which
   # made Hyprland itself fail to start right after login — greeter login
   # loop.
+  #
+  # MOZ_WEBRENDER=0: separate bug from the crash above — images/video
+  # rendering as horizontal stripes of corrupted pixels, a known WebRender
+  # texture-atlas/tiling bug that reproduces under both GPU and software
+  # (SWGL) WebRender. Disabling WebRender falls back to Firefox's older
+  # Basic compositor, which doesn't share that tiling code path.
   custom.librewolfPackage = pkgs.symlinkJoin {
     name = "librewolf-egl-fixed";
     paths = [ pkgs.librewolf ];
     buildInputs = [ pkgs.makeWrapper ];
     postBuild = ''
       wrapProgram $out/bin/librewolf \
-        --set __EGL_VENDOR_LIBRARY_FILENAMES /run/opengl-driver/share/glvnd/egl_vendor.d/10_nvidia.json
+        --set __EGL_VENDOR_LIBRARY_FILENAMES /run/opengl-driver/share/glvnd/egl_vendor.d/10_nvidia.json \
+        --set MOZ_WEBRENDER 0
     '';
   };
 }
