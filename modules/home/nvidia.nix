@@ -1,11 +1,14 @@
 { pkgs, ... }:
 {
+  # hl.env (Lua config) takes name/value as two separate arguments, unlike
+  # hyprlang's single "NAME,VALUE" string — see home/hyprland.nix for the
+  # configType = "lua" switch.
   wayland.windowManager.hyprland.settings.env = [
-    "LIBVA_DRIVER_NAME,nvidia"
-    "GBM_BACKEND,nvidia-drm"
-    "__GLX_VENDOR_LIBRARY_NAME,nvidia"
-    "NVD_BACKEND,direct"
-    "WLR_NO_HARDWARE_CURSORS,1"
+    { _args = [ "LIBVA_DRIVER_NAME" "nvidia" ]; }
+    { _args = [ "GBM_BACKEND" "nvidia-drm" ]; }
+    { _args = [ "__GLX_VENDOR_LIBRARY_NAME" "nvidia" ]; }
+    { _args = [ "NVD_BACKEND" "direct" ]; }
+    { _args = [ "WLR_NO_HARDWARE_CURSORS" "1" ]; }
   ];
 
   # GLVND's generic EGL vendor discovery (__eglLoadVendors) enumerates every

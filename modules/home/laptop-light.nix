@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, lib, ... }:
 {
   # Root cause (full investigation in git history — see prior revisions of
   # this file for the coredump/ldd/objdump trail): Firefox/LibreWolf's
@@ -65,11 +65,14 @@
   # $mod+O / $mod SHIFT+O: switch focus to / move the active window to the
   # other monitor. Needed once the USB-C dock is plugged in (see workspace
   # pinning below for the other half of the multi-monitor setup).
+  # hl.bind (Lua config) takes a key combo string, a dispatcher call, and an
+  # optional opts table — not the single hyprlang string — see
+  # home/hyprland.nix for the configType = "lua" switch.
   wayland.windowManager.hyprland.settings.bind = [
-    "$mod, S,       exec, grim -g \"$(slurp)\" - | wl-copy"
-    "$mod SHIFT, S, exec, grim - | wl-copy"
-    "$mod, O,       focusmonitor, +1"
-    "$mod SHIFT, O, movewindow, mon:+1"
+    { _args = [ "SUPER + S" (lib.generators.mkLuaInline ''hl.dsp.exec_cmd("grim -g \"$(slurp)\" - | wl-copy")'') ]; }
+    { _args = [ "SUPER + SHIFT + S" (lib.generators.mkLuaInline ''hl.dsp.exec_cmd("grim - | wl-copy")'') ]; }
+    { _args = [ "SUPER + O" (lib.generators.mkLuaInline ''hl.dsp.focus({ monitor = "+1" })'') ]; }
+    { _args = [ "SUPER + SHIFT + O" (lib.generators.mkLuaInline ''hl.dsp.window.move({ monitor = "+1" })'') ]; }
   ];
 
   # Pin workspaces to a monitor so switching workspace never "steals" it from
@@ -81,7 +84,23 @@
   # Matched by description (not "DP-1"/"DP-2"/etc.) because the connector
   # name Hyprland assigns to the dock's output depends on which USB-C port
   # it's plugged into and isn't stable across replugs.
-  wayland.windowManager.hyprland.settings.workspace =
-    (map (i: "${toString i}, monitor:eDP-1, persistent:true" + (if i == 1 then ", default:true" else "")) [ 1 2 3 4 5 ])
-    ++ (map (i: "${toString i}, monitor:desc:Dell Inc. DELL P2422HE BGNCYB3, persistent:true" + (if i == 6 then ", default:true" else "")) [ 6 7 8 9 10 ]);
+  #
+  # Nix attribute name must be "workspace_rule", not "workspace" — that's
+  # the actual hl.* function name for this in the Lua config (hyprlang's
+  # "workspace" keyword is exposed as hl.workspace_rule, not hl.workspace).
+  wayland.windowManager.hyprland.settings.workspace_rule =
+    (map
+      (i: {
+        workspace = toString i;
+        monitor = "eDP-1";
+        persistent = true;
+      } // lib.optionalAttrs (i == 1) { default = true; })
+      [ 1 2 3 4 5 ])
+    ++ (map
+      (i: {
+        workspace = toString i;
+        monitor = "desc:Dell Inc. DELL P2422HE BGNCYB3";
+        persistent = true;
+      } // lib.optionalAttrs (i == 6) { default = true; })
+      [ 6 7 8 9 10 ]);
 }

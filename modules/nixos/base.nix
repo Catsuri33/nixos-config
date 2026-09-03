@@ -89,11 +89,18 @@
   # connected (its own dummy "leak" interface, by design), so an IPv6 DNS
   # server here would silently time out instead of failing over, making
   # resolution randomly hang whenever resolved picked the IPv6 address.
+  #
+  # DNSOverTLS is "opportunistic", not "yes": networks like university
+  # eduroam/wired campus links firewall off port 853 entirely, and a strict
+  # requirement leaves no plaintext fallback, so DNS fails completely on
+  # those networks. Opportunistic still encrypts whenever the server
+  # supports it and only drops to plaintext (still to Quad9, not to
+  # whatever resolver the network pushes) when TLS is unreachable.
   services.resolved = {
     enable = true;
     settings.Resolve = {
       DNS = "9.9.9.9#dns.quad9.net";
-      DNSOverTLS = "yes";
+      DNSOverTLS = "opportunistic";
       DNSSEC = "allow-downgrade";
     };
   };
@@ -109,12 +116,13 @@
   # Root cause of the "no DNS at all while connected" bug: proton0 comes up
   # with its own pushed resolver (10.2.0.1) and a "~." routing domain, which
   # makes it a competing resolution scope for every lookup, not just a
-  # fallback. Proton's resolver doesn't speak DNS-over-TLS, and DNSOverTLS
-  # is set to "yes" (mandatory, no plaintext fallback) above, so any query
-  # resolved routes through that scope hangs forever waiting for a TLS
-  # handshake the server will never complete. Clearing proton0's own DNS/
-  # domain once it's up forces all resolution through the global Quad9 DoT
-  # server instead. NetworkManager keeps re-pushing proton0's own
+  # fallback. Proton's resolver doesn't speak DNS-over-TLS, so even with
+  # DNSOverTLS opportunistic above, queries routed through that scope would
+  # silently fall back to plaintext DNS against Proton's own resolver
+  # instead of Quad9 — leaking every lookup to Proton rather than just
+  # dropping encryption on an unsupported server. Clearing proton0's own
+  # DNS/domain once it's up forces all resolution through the global Quad9
+  # DoT server instead. NetworkManager keeps re-pushing proton0's own
   # DNS/domain config for as long as the connection is active, not just
   # once at startup — confirmed in practice: even a 10-second retry loop
   # still lost eventually. Run a loop that keeps re-clearing for as long
@@ -280,6 +288,15 @@
     pkg-config
     gcc
   ];
+
+  # Dev tools (pnpm, etc.) sometimes self-download a dynamically-linked
+  # standalone build instead of using the nixpkgs-packaged version - e.g.
+  # pnpm's own devEngines.packageManager version check with onFail:
+  # "download" fetches a compiled binary when the local pnpm version
+  # doesn't match a project's pin. NixOS has no generic-Linux dynamic
+  # linker path by default, so those binaries fail to start. nix-ld
+  # provides that compatibility shim.
+  programs.nix-ld.enable = true;
 
   # Rootless Docker: daemon runs as the user (no root-owned socket/daemon),
   # containers are mapped into the user's subuid/subgid range instead of

@@ -17,5 +17,7 @@
   virtualisation.libvirtd.enable = true;
   programs.virt-manager.enable = true;
 
+  programs.steam.enable = true;
+
   system.stateVersion = "24.11";
 }

@@ -1,201 +1,210 @@
-{ config, pkgs, inputs, ... }:
+{ config, pkgs, lib, inputs, ... }:
+
+let
+  mod = "SUPER";
+
+  mkBind = combo: dispatcher: { _args = [ combo (lib.generators.mkLuaInline dispatcher) ]; };
+  mkBindOpts = combo: dispatcher: opts: { _args = [ combo (lib.generators.mkLuaInline dispatcher) opts ]; };
+
+  # QWERTY key -> workspace number, AZERTY key -> same workspace number.
+  workspaceKeys = [
+    { qwerty = "1"; azerty = "ampersand"; ws = "1"; }
+    { qwerty = "2"; azerty = "eacute"; ws = "2"; }
+    { qwerty = "3"; azerty = "quotedbl"; ws = "3"; }
+    { qwerty = "4"; azerty = "apostrophe"; ws = "4"; }
+    { qwerty = "5"; azerty = "parenleft"; ws = "5"; }
+    { qwerty = "6"; azerty = "minus"; ws = "6"; }
+    { qwerty = "7"; azerty = "egrave"; ws = "7"; }
+    { qwerty = "8"; azerty = "underscore"; ws = "8"; }
+    { qwerty = "9"; azerty = "ccedilla"; ws = "9"; }
+    { qwerty = "0"; azerty = "agrave"; ws = "10"; }
+  ];
+
+  focusWorkspaceBinds = builtins.concatMap (k: [
+    (mkBind "${mod} + ${k.qwerty}" ''hl.dsp.focus({ workspace = "${k.ws}" })'')
+    (mkBind "${mod} + ${k.azerty}" ''hl.dsp.focus({ workspace = "${k.ws}" })'')
+  ]) workspaceKeys;
+
+  moveToWorkspaceBinds = builtins.concatMap (k: [
+    (mkBind "${mod} + SHIFT + ${k.qwerty}" ''hl.dsp.window.move({ workspace = "${k.ws}" })'')
+    (mkBind "${mod} + SHIFT + ${k.azerty}" ''hl.dsp.window.move({ workspace = "${k.ws}" })'')
+  ]) workspaceKeys;
+in
 
 {
   wayland.windowManager.hyprland = {
     enable = true;
-    configType = "hyprlang";
+    configType = "lua";
 
     settings = {
-      monitor = ",preferred,auto,1";
-
-      exec-once = [
-        "uwsm app -- awww-daemon"
-        "uwsm app -- $HOME/.local/bin/wallpaper-rotate"
-        "uwsm app -- $HOME/.local/bin/wallpaper-monitor-watch"
-        "uwsm app -- waybar"
-        "uwsm app -- nm-applet --indicator"
-        "uwsm app -- vicinae server"
-      ];
+      monitor = {
+        output = "";
+        mode = "preferred";
+        position = "auto";
+        # hl.monitor's "scale" field parses a string (e.g. "auto" or "1"), not a number.
+        scale = "1";
+      };
 
       env = [
-        "XCURSOR_SIZE,24"
-        "XCURSOR_THEME,Adwaita"
+        { _args = [ "XCURSOR_SIZE" "24" ]; }
+        { _args = [ "XCURSOR_THEME" "Adwaita" ]; }
       ];
 
-      input = {
-        kb_layout = "fr";
-        follow_mouse = 1;
-        sensitivity = 0;
-        numlock_by_default = true;
-        touchpad = {
-          natural_scroll = true;
-          disable_while_typing = true;
+      # hl.config walks nested tables into dotted config keys, so this mirrors
+      # the old hyprlang "general:col.active_border"-style nesting directly.
+      config = {
+        general = {
+          gaps_in = 6;
+          gaps_out = 12;
+          border_size = 1;
+          col = {
+            active_border = {
+              colors = [ "rgba(0a84ffcc)" "rgba(60c3ffcc)" ];
+              angle = 45;
+            };
+            inactive_border = "rgba(ffffff14)";
+          };
+          layout = "dwindle";
+          resize_on_border = true;
+        };
+
+        decoration = {
+          rounding = 12;
+          blur = {
+            enabled = true;
+            size = 8;
+            passes = 3;
+            new_optimizations = true;
+            xray = false;
+          };
+          shadow = {
+            enabled = true;
+            range = 20;
+            render_power = 3;
+            color = "rgba(00000055)";
+            color_inactive = "rgba(00000030)";
+          };
+          inactive_opacity = 0.96;
+        };
+
+        animations.enabled = true;
+
+        dwindle.preserve_split = true;
+
+        misc = {
+          force_default_wallpaper = 0;
+          disable_hyprland_logo = true;
+        };
+
+        input = {
+          kb_layout = "fr";
+          follow_mouse = 1;
+          sensitivity = 0;
+          numlock_by_default = true;
+          touchpad = {
+            natural_scroll = true;
+            disable_while_typing = true;
+          };
         };
       };
 
-      general = {
-        gaps_in = 6;
-        gaps_out = 12;
-        border_size = 1;
-        "col.active_border" = "rgba(0a84ffcc) rgba(60c3ffcc) 45deg";
-        "col.inactive_border" = "rgba(ffffff14)";
-        layout = "dwindle";
-        resize_on_border = true;
-      };
+      curve = [
+        (mkBind "easeOut" ''{ type = "bezier", points = { {0.05, 0.9}, {0.1, 1.05} } }'')
+        (mkBind "linear" ''{ type = "bezier", points = { {0.0, 0.0}, {1.0, 1.0} } }'')
+      ];
 
-      decoration = {
-        rounding = 12;
-        blur = {
+      animation = [
+        { leaf = "windows"; enabled = true; speed = 6; bezier = "easeOut"; }
+        {
+          leaf = "windowsOut";
           enabled = true;
-          size = 8;
-          passes = 3;
-          new_optimizations = true;
-          xray = false;
-        };
-        shadow = {
-          enabled = true;
-          range = 20;
-          render_power = 3;
-          color = "rgba(00000055)";
-          color_inactive = "rgba(00000030)";
-        };
-        inactive_opacity = 0.96;
-      };
+          speed = 6;
+          bezier = "default";
+          style = "popin 80%";
+        }
+        { leaf = "border"; enabled = true; speed = 10; bezier = "default"; }
+        { leaf = "fade"; enabled = true; speed = 7; bezier = "default"; }
+        { leaf = "workspaces"; enabled = true; speed = 5; bezier = "default"; }
+      ];
 
+      # systemd activation gets its own hl.on("hyprland.start", ...) from
+      # home-manager already; this is the exec-once equivalent for the rest.
+      on = [
+        {
+          _args = [
+            "hyprland.start"
+            (lib.generators.mkLuaInline ''
+              function()
+                hl.exec_cmd("uwsm app -- awww-daemon")
+                hl.exec_cmd("uwsm app -- $HOME/.local/bin/wallpaper-rotate")
+                hl.exec_cmd("uwsm app -- $HOME/.local/bin/wallpaper-monitor-watch")
+                hl.exec_cmd("uwsm app -- waybar")
+                hl.exec_cmd("uwsm app -- nm-applet --indicator")
+                hl.exec_cmd("uwsm app -- vicinae server")
+              end
+            '')
+          ];
+        }
+      ];
 
-      animations = {
-        enabled = true;
-        bezier = [
-          "easeOut, 0.05, 0.9, 0.1, 1.05"
-          "linear, 0.0, 0.0, 1.0, 1.0"
+      bind =
+        [
+          # Applications
+          (mkBind "${mod} + Return" ''hl.dsp.exec_cmd("kitty")'')
+          (mkBind "${mod} + R" ''hl.dsp.exec_cmd("vicinae toggle")'')
+          (mkBind "${mod} + SHIFT + L" ''hl.dsp.exec_cmd("hyprlock")'')
+
+          # Window management
+          (mkBind "${mod} + Q" ''hl.dsp.window.close()'')
+          (mkBind "${mod} + M" ''hl.dsp.exit()'')
+          (mkBind "${mod} + V" ''hl.dsp.window.float()'')
+          (mkBind "${mod} + F" ''hl.dsp.window.fullscreen()'')
+          (mkBind "${mod} + P" ''hl.dsp.window.pseudo()'')
+
+          # Focus
+          (mkBind "${mod} + left" ''hl.dsp.focus({ direction = "left" })'')
+          (mkBind "${mod} + right" ''hl.dsp.focus({ direction = "right" })'')
+          (mkBind "${mod} + up" ''hl.dsp.focus({ direction = "up" })'')
+          (mkBind "${mod} + down" ''hl.dsp.focus({ direction = "down" })'')
+          (mkBind "${mod} + H" ''hl.dsp.focus({ direction = "left" })'')
+          (mkBind "${mod} + L" ''hl.dsp.focus({ direction = "right" })'')
+          (mkBind "${mod} + K" ''hl.dsp.focus({ direction = "up" })'')
+          (mkBind "${mod} + J" ''hl.dsp.focus({ direction = "down" })'')
+
+          # Move windows
+          (mkBind "${mod} + SHIFT + left" ''hl.dsp.window.move({ direction = "left" })'')
+          (mkBind "${mod} + SHIFT + right" ''hl.dsp.window.move({ direction = "right" })'')
+          (mkBind "${mod} + SHIFT + up" ''hl.dsp.window.move({ direction = "up" })'')
+          (mkBind "${mod} + SHIFT + down" ''hl.dsp.window.move({ direction = "down" })'')
+        ]
+        ++ focusWorkspaceBinds
+        ++ moveToWorkspaceBinds
+        ++ [
+          # Screenshot
+          (mkBind "Print" ''hl.dsp.exec_cmd("grim -g \"$(slurp)\" - | wl-copy")'')
+          (mkBind "SHIFT + Print" ''hl.dsp.exec_cmd("grim - | wl-copy")'')
+
+          # Toggle keyboard layout (AZERTY/QWERTY)
+          (mkBind "${mod} + Space" ''
+            hl.dsp.exec_cmd("if hyprctl -j getoption input:kb_layout | grep -q '\"fr\"'; then hyprctl keyword input:kb_layout us; else hyprctl keyword input:kb_layout fr; fi")
+          '')
+
+          # Media keys: repeat while held, and still trigger while the session is locked.
+          (mkBindOpts "XF86AudioRaiseVolume" ''hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+")'' { repeating = true; locked = true; })
+          (mkBindOpts "XF86AudioLowerVolume" ''hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-")'' { repeating = true; locked = true; })
+          (mkBindOpts "XF86MonBrightnessUp" ''hl.dsp.exec_cmd("brightnessctl set 10%+")'' { repeating = true; locked = true; })
+          (mkBindOpts "XF86MonBrightnessDown" ''hl.dsp.exec_cmd("brightnessctl set 10%-")'' { repeating = true; locked = true; })
+
+          # Media keys: single trigger, still works while the session is locked.
+          (mkBindOpts "XF86AudioMute" ''hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle")'' { locked = true; })
+          (mkBindOpts "XF86AudioPlay" ''hl.dsp.exec_cmd("playerctl play-pause")'' { locked = true; })
+          (mkBindOpts "XF86AudioNext" ''hl.dsp.exec_cmd("playerctl next")'' { locked = true; })
+          (mkBindOpts "XF86AudioPrev" ''hl.dsp.exec_cmd("playerctl previous")'' { locked = true; })
+
+          # Mouse
+          (mkBind "${mod} + mouse:272" ''hl.dsp.window.drag()'')
+          (mkBind "${mod} + mouse:273" ''hl.dsp.window.resize()'')
         ];
-        animation = [
-          "windows,     1, 6,  easeOut"
-          "windowsOut,  1, 6,  default, popin 80%"
-          "border,      1, 10, default"
-          "fade,        1, 7,  default"
-          "workspaces,  1, 5,  default"
-        ];
-      };
-
-      dwindle = {
-        preserve_split = true;
-      };
-
-      misc = {
-        force_default_wallpaper = 0;
-        disable_hyprland_logo = true;
-      };
-
-      "$mod" = "SUPER";
-
-      bind = [
-        # Applications
-        "$mod, Return, exec, kitty"
-        "$mod, R,      exec, vicinae toggle"
-        "$mod SHIFT, L, exec, hyprlock"
-
-        # Window management
-        "$mod, Q,      killactive"
-        "$mod, M,      exit"
-        "$mod, V,      togglefloating"
-        "$mod, F,      fullscreen"
-        "$mod, P,      pseudo"
-
-        # Focus
-        "$mod, left,   movefocus, l"
-        "$mod, right,  movefocus, r"
-        "$mod, up,     movefocus, u"
-        "$mod, down,   movefocus, d"
-        "$mod, H,      movefocus, l"
-        "$mod, L,      movefocus, r"
-        "$mod, K,      movefocus, u"
-        "$mod, J,      movefocus, d"
-
-        # Move windows
-        "$mod SHIFT, left,  movewindow, l"
-        "$mod SHIFT, right, movewindow, r"
-        "$mod SHIFT, up,    movewindow, u"
-        "$mod SHIFT, down,  movewindow, d"
-
-        # Workspaces (QWERTY)
-        "$mod, 1, workspace, 1"
-        "$mod, 2, workspace, 2"
-        "$mod, 3, workspace, 3"
-        "$mod, 4, workspace, 4"
-        "$mod, 5, workspace, 5"
-        "$mod, 6, workspace, 6"
-        "$mod, 7, workspace, 7"
-        "$mod, 8, workspace, 8"
-        "$mod, 9, workspace, 9"
-        "$mod, 0, workspace, 10"
-
-        # Workspaces (AZERTY)
-        "$mod, ampersand,   workspace, 1"
-        "$mod, eacute,      workspace, 2"
-        "$mod, quotedbl,    workspace, 3"
-        "$mod, apostrophe,  workspace, 4"
-        "$mod, parenleft,   workspace, 5"
-        "$mod, minus,       workspace, 6"
-        "$mod, egrave,      workspace, 7"
-        "$mod, underscore,  workspace, 8"
-        "$mod, ccedilla,    workspace, 9"
-        "$mod, agrave,      workspace, 10"
-
-        # Move window to workspace (QWERTY)
-        "$mod SHIFT, 1, movetoworkspace, 1"
-        "$mod SHIFT, 2, movetoworkspace, 2"
-        "$mod SHIFT, 3, movetoworkspace, 3"
-        "$mod SHIFT, 4, movetoworkspace, 4"
-        "$mod SHIFT, 5, movetoworkspace, 5"
-        "$mod SHIFT, 6, movetoworkspace, 6"
-        "$mod SHIFT, 7, movetoworkspace, 7"
-        "$mod SHIFT, 8, movetoworkspace, 8"
-        "$mod SHIFT, 9, movetoworkspace, 9"
-        "$mod SHIFT, 0, movetoworkspace, 10"
-
-        # Move window to workspace (AZERTY)
-        "$mod SHIFT, ampersand,   movetoworkspace, 1"
-        "$mod SHIFT, eacute,      movetoworkspace, 2"
-        "$mod SHIFT, quotedbl,    movetoworkspace, 3"
-        "$mod SHIFT, apostrophe,  movetoworkspace, 4"
-        "$mod SHIFT, parenleft,   movetoworkspace, 5"
-        "$mod SHIFT, minus,       movetoworkspace, 6"
-        "$mod SHIFT, egrave,      movetoworkspace, 7"
-        "$mod SHIFT, underscore,  movetoworkspace, 8"
-        "$mod SHIFT, ccedilla,    movetoworkspace, 9"
-        "$mod SHIFT, agrave,      movetoworkspace, 10"
-
-        # Screenshot
-        ", Print,       exec, grim -g \"$(slurp)\" - | wl-copy"
-        "SHIFT, Print,  exec, grim - | wl-copy"
-
-        # Toggle keyboard layout (AZERTY/QWERTY)
-        "$mod, Space,    exec, if hyprctl -j getoption input:kb_layout | grep -q '\"fr\"'; then hyprctl keyword input:kb_layout us; else hyprctl keyword input:kb_layout fr; fi"
-
-      ];
-
-      # Media keys
-      bindel = [
-        ", XF86AudioRaiseVolume,   exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"
-        ", XF86AudioLowerVolume,   exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"
-        ", XF86MonBrightnessUp,    exec, brightnessctl set 10%+"
-        ", XF86MonBrightnessDown,  exec, brightnessctl set 10%-"
-      ];
-
-      bindl = [
-        ", XF86AudioMute,  exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
-        ", XF86AudioPlay,  exec, playerctl play-pause"
-        ", XF86AudioNext,  exec, playerctl next"
-        ", XF86AudioPrev,  exec, playerctl previous"
-      ];
-
-      # Mouse
-      bindm = [
-        "$mod, mouse:272, movewindow"
-        "$mod, mouse:273, resizewindow"
-      ];
-
     };
   };
 }
