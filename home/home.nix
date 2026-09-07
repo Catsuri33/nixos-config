@@ -16,7 +16,47 @@
     description = "LibreWolf package to install.";
   };
 
-  config = {
+  config = let
+
+    # nixpkgs' spotify crashes on launch with "double free or corruption
+    # (out)" (glibc's own heap-corruption abort, not a segfault) under the
+    # GrapheneOS hardened_malloc allocator that modules/nixos/base.nix
+    # preloads for every process system-wide
+    # (environment.memoryAllocator.provider, both the "graphene-hardened"
+    # and "-light" variants apply equally here since the bug is a mismatch
+    # between allocators, not a specific check). Confirmed live: with
+    # hardened_malloc's libhardened_malloc.so mapped into Spotify's
+    # process (visible in /proc/<pid>/maps), it reliably aborts within
+    # ~1s of launch; re-running it in a private mount namespace with
+    # /etc/ld-nix.so.preload (the file NixOS's patched glibc reads to
+    # decide what to preload) shadowed by an empty file makes
+    # libhardened_malloc.so disappear from the process's maps and Spotify
+    # runs normally. Root cause is presumably a real heap bug in
+    # Spotify's closed-source binary that stock glibc's malloc tolerates
+    # but hardened_malloc's canaries/guard pages don't — either way, the
+    # exemption is scoped to just this one binary (a few-ms bwrap
+    # indirection) rather than weakening the allocator for the whole
+    # system.
+    spotifyLauncher = pkgs.writeShellScript "spotify-unhardened" ''
+      dir=$(dirname "$(readlink -f "$0")")
+      preload=$(readlink -f /etc/ld-nix.so.preload 2>/dev/null)
+      if [ -n "$preload" ] && [ -e "$preload" ]; then
+        exec ${pkgs.bubblewrap}/bin/bwrap --dev-bind / / \
+          --ro-bind /dev/null "$preload" \
+          -- "$dir/.spotify-unhardened" "$@"
+      else
+        exec "$dir/.spotify-unhardened" "$@"
+      fi
+    '';
+
+    spotifyUnhardened = pkgs.spotify.overrideAttrs (old: {
+      postFixup = (old.postFixup or "") + ''
+        mv $out/share/spotify/spotify $out/share/spotify/.spotify-unhardened
+        install -m755 ${spotifyLauncher} $out/share/spotify/spotify
+      '';
+    });
+
+  in {
 
     home.username = "lmichault";
     home.homeDirectory = "/home/lmichault";
@@ -59,7 +99,7 @@
       signal-desktop
 
       # Music
-      spotify
+      spotifyUnhardened
 
       # Proton suite
       protonmail-desktop
@@ -79,6 +119,10 @@
       # Editor
       vscode
       claude-code
+
+      # Typst
+      typst
+      tinymist
 
       # AppImage support. appimage-run's default FHS wrapper only bundles a
       # minimal library set; Tauri-based AppImages need webkit2gtk at

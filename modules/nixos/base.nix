@@ -24,6 +24,23 @@
   security.protectKernelImage = true;
   security.sudo.execWheelOnly = true;
   systemd.coredump.enable = false;
+
+  # Disabling systemd-coredump above only stops it from catching crashes —
+  # it doesn't stop crashes from dumping at all. With no coredump handler
+  # registered, the kernel falls back to its own default behaviour, which
+  # (found in practice via a Spotify crash loop) writes a full raw memory
+  # dump named "core.<pid>" into the crashing process's cwd every time,
+  # since the systemd user session still sets `ulimit -c unlimited` by
+  # default. That's a worse outcome than the journal-managed dumps this
+  # setting was meant to avoid: multi-hundred-MB files scattered across
+  # whatever directory a shell happened to be in, readable as long as
+  # they sit there. Zero out the core size limit so crashes just stop
+  # (no dump anywhere), matching the actual intent of coredump.enable =
+  # false.
+  security.pam.loginLimits = [
+    { domain = "*"; type = "hard"; item = "core"; value = "0"; }
+  ];
+
   services.fwupd.enable = true;
 
   # AppArmor LSM framework (GrapheneOS-style app confinement). This only
