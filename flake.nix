@@ -40,20 +40,10 @@
     nixosConfigurations = {
 
       # Gaming laptop (Nvidia, Wine, Steam)
-      # disko is now wired in ahead of the physical LUKS reinstall (see
-      # README.md for the runbook). Until that reinstall actually happens,
-      # this host still boots from plain ext4 and `hosts/laptop-gaming/
-      # hardware-configuration.nix` still declares the old plaintext
-      # fileSystems — building/switching this config before the reinstall
-      # will fail on conflicting fileSystems."/" definitions, which is a
-      # safe failure (current running system is untouched). Do NOT run
-      # `nixos-rebuild switch` (including the weekly system.autoUpgrade)
-      # against this host until right after the disko + nixos-install step.
-      #
-      # lanzaboote.nixosModules.lanzaboote + ./modules/nixos/secureboot.nix
-      # (Secure Boot) are still deliberately NOT wired in — needs a manual
-      # key enrollment step (sbctl) first, see README.md. Add both lines
-      # once that's done.
+      # disko + LUKS reinstall is complete — the host boots from the
+      # disko-managed encrypted root (see `lsblk`: nvme1n1p2 crypto_LUKS ->
+      # cryptroot). Secure Boot (lanzaboote + ./modules/nixos/secureboot.nix)
+      # is wired in below.
       laptop-gaming = nixpkgs.lib.nixosSystem {
         inherit system;
         specialArgs = { inherit inputs; };
