@@ -68,6 +68,7 @@
             ./modules/home/nvidia.nix
             ./modules/home/gaming.nix
             ./modules/home/laptop.nix
+            ./modules/home/laptop-gaming.nix
           ])
         ];
       };

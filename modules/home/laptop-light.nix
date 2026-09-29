@@ -49,6 +49,7 @@
   home.packages = with pkgs; [
     # Communication
     mattermost-desktop
+    zoom-us
 
     # Dev tools
     dbeaver-bin
