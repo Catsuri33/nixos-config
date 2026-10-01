@@ -295,6 +295,7 @@
     nodejs
     pnpm
     opentofu
+    buildah
 
     # Rust (gcc provides the linker cargo/rustc need at build time)
     cargo
