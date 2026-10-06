@@ -305,6 +305,11 @@
         git_branch = {
           symbol = " ";
           style = "bold purple";
+          # Long MR branch names (feat/166-discord-bot-to-…) otherwise push
+          # the first line past the terminal width, so it wraps and splits
+          # the prompt.
+          truncation_length = 32;
+          truncation_symbol = "…";
           format = "[on](white) [$symbol$branch]($style) ";
         };
 
