@@ -17,6 +17,11 @@
   boot.consoleLogLevel = 3;
   boot.initrd.verbose = false;
   boot.kernelParams = [ "quiet" "splash" "udev.log_level=3" "systemd.show_status=auto" ];
+  # Early KMS: plymouth ignores simpledrm and waits for a real DRM driver,
+  # so without i915 in the initrd it only gets a display ~1s before greetd
+  # starts, leaving a black screen for the whole boot. The modules closure
+  # pulls i915's firmware (GuC/DMC) into the initrd along with it.
+  boot.initrd.kernelModules = [ "i915" ];
 
   # Lets wireshark capture packets without running as root (dumpcap gets
   # CAP_NET_RAW/CAP_NET_ADMIN, restricted to the wireshark group).
