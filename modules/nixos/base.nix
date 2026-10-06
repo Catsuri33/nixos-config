@@ -307,6 +307,9 @@
     dnsutils
     unzip
 
+    # Security auditing (run as root: `sudo lynis audit system`)
+    lynis
+
     # Dev tooling
     uv
     nodejs
