@@ -6,6 +6,7 @@
     ../../modules/nixos/nvidia.nix
     ../../modules/nixos/gaming.nix
     ../../modules/nixos/thermal.nix
+    ../../modules/nixos/power-saving.nix
   ];
 
   networking.hostName = "laptop-gaming";

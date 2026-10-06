@@ -3,6 +3,7 @@
   imports = [
     ./hardware-configuration.nix
     ../../modules/nixos/base.nix
+    ../../modules/nixos/power-saving.nix
   ];
 
   networking.hostName = "laptop-light";
