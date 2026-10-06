@@ -56,6 +56,36 @@
       '';
     });
 
+    # Same exemption for LibreWolf: since the 2026-10-06 nixpkgs bump it
+    # aborts at startup with "fatal allocator error: invalid uninitialized
+    # allocator usage" (hardened_malloc's own check) — Firefox ships its own
+    # allocator (mozjemalloc) and the two now clash. Confirmed live: the
+    # same binary starts normally with the preload shadowed. Little is lost
+    # here, since mozjemalloc already serves the browser's allocations.
+    # Wraps whatever host modules picked as custom.librewolfPackage; the
+    # .desktop entries call `librewolf` by name, so they go through it too.
+    librewolfUnhardened = let
+      inner = config.custom.librewolfPackage;
+    in pkgs.symlinkJoin {
+      name = "${inner.name}-unhardened";
+      paths = [ inner ];
+      postBuild = ''
+        rm $out/bin/librewolf
+        cat > $out/bin/librewolf <<'EOF'
+        #!${pkgs.runtimeShell}
+        preload=$(readlink -f /etc/ld-nix.so.preload 2>/dev/null)
+        if [ -n "$preload" ] && [ -e "$preload" ]; then
+          exec ${pkgs.bubblewrap}/bin/bwrap --dev-bind / / \
+            --ro-bind /dev/null "$preload" \
+            -- ${inner}/bin/librewolf "$@"
+        else
+          exec ${inner}/bin/librewolf "$@"
+        fi
+        EOF
+        chmod +x $out/bin/librewolf
+      '';
+    };
+
   in {
 
     home.username = "lmichault";
@@ -92,7 +122,7 @@
       nautilus
 
       # Browser
-      config.custom.librewolfPackage
+      librewolfUnhardened
 
       # Communication
       discord
