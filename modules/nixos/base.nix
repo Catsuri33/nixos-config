@@ -101,11 +101,43 @@
     "net.ipv4.conf.all.send_redirects" = 0;
     "net.ipv4.conf.all.accept_source_route" = 0;
     "net.ipv6.conf.all.accept_redirects" = 0;
+    "net.ipv6.conf.default.accept_redirects" = 0;
     "net.ipv6.conf.all.accept_source_route" = 0;
+    # Log packets with impossible source addresses (spoofing hints).
+    "net.ipv4.conf.all.log_martians" = 1;
+    "net.ipv4.conf.default.log_martians" = 1;
+    # Only root can load TTY line disciplines (a recurring kernel exploit
+    # vector via unprivileged autoload of obscure ldisc modules).
+    "dev.tty.ldisc_autoload" = 0;
     "fs.protected_symlinks" = 1;
     "fs.protected_hardlinks" = 1;
     "fs.protected_fifos" = 2;
     "fs.protected_regular" = 2;
+  };
+
+  # Rarely-used network protocols with a history of kernel CVEs; none of
+  # them is needed on a desktop, so stop the kernel from autoloading them.
+  boot.blacklistedKernelModules = [ "dccp" "sctp" "rds" "tipc" ];
+
+  # /tmp in RAM: wiped on every boot and can't fill up the root fs.
+  # Nix builds default to /tmp too, so send them to disk-backed /var/tmp
+  # instead or a big build could exhaust RAM.
+  boot.tmp.useTmpfs = true;
+  nix.settings.build-dir = "/var/tmp";
+
+  # Kernel audit trail (auditd), kept small on purpose: no exec logging,
+  # which would flood the logs on a desktop. Watches changes to identity
+  # and privilege files (sudo use itself is already in the journal via
+  # PAM). Read with `ausearch -k <key>` / `aureport`.
+  security.auditd.enable = true;
+  security.audit = {
+    enable = true;
+    rules = [
+      "-w /etc/passwd -p wa -k identity"
+      "-w /etc/group -p wa -k identity"
+      "-w /etc/shadow -p wa -k identity"
+      "-w /etc/sudoers -p wa -k sudoers"
+    ];
   };
 
   # DNS-over-TLS (Quad9: privacy-respecting, filters known-malicious domains).
@@ -309,6 +341,8 @@
 
     # Security auditing (run as root: `sudo lynis audit system`)
     lynis
+    # Known CVEs in the system closure: `vulnix --system`
+    vulnix
 
     # Dev tooling
     uv
