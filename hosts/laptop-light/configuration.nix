@@ -9,6 +9,15 @@
   networking.hostName = "laptop-light";
   hardware.enableRedistributableFirmware = true;
 
+  # Boot splash: the default "bgrt" theme redraws the firmware's HP logo
+  # (ACPI BGRT) with the Nix snowflake underneath, like Arch/Debian do.
+  # Also gives a graphical LUKS passphrase prompt (systemd initrd).
+  # Kernel/initrd output is silenced so it doesn't scribble over the splash.
+  boot.plymouth.enable = true;
+  boot.consoleLogLevel = 3;
+  boot.initrd.verbose = false;
+  boot.kernelParams = [ "quiet" "splash" "udev.log_level=3" "systemd.show_status=auto" ];
+
   # Lets wireshark capture packets without running as root (dumpcap gets
   # CAP_NET_RAW/CAP_NET_ADMIN, restricted to the wireshark group).
   programs.wireshark.enable = true;
