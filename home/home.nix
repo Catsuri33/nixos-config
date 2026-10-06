@@ -352,6 +352,23 @@
         };
         Install.WantedBy = [ "graphical-session.target" ];
       };
+
+      # Run as a unit rather than from hyprland.start: it starts once uwsm has
+      # exported the Wayland env, and gets restarted if the server dies.
+      services.vicinae = {
+        Unit = {
+          Description = "Vicinae launcher server";
+          After = [ "graphical-session.target" ];
+          PartOf = [ "graphical-session.target" ];
+        };
+        Service = {
+          ExecStart = "${inputs.vicinae.packages.${pkgs.stdenv.hostPlatform.system}.default}/bin/vicinae server --replace";
+          Restart = "always";
+          RestartSec = "2";
+          KillMode = "process";
+        };
+        Install.WantedBy = [ "graphical-session.target" ];
+      };
     };
 
   };

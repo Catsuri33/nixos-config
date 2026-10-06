@@ -35,6 +35,11 @@ in
   wayland.windowManager.hyprland = {
     enable = true;
     configType = "lua";
+    # uwsm (modules/nixos/base.nix) owns the session units. home-manager's
+    # own hyprland-session.target stops/restarts itself on startup and
+    # propagates that stop to graphical-session.target, which makes uwsm
+    # tear down the compositor right after login.
+    systemd.enable = false;
 
     settings = {
       monitor = {
@@ -127,8 +132,7 @@ in
         { leaf = "workspaces"; enabled = true; speed = 5; bezier = "default"; }
       ];
 
-      # systemd activation gets its own hl.on("hyprland.start", ...) from
-      # home-manager already; this is the exec-once equivalent for the rest.
+      # exec-once equivalent; session/systemd activation is left to uwsm.
       on = [
         {
           _args = [
@@ -139,8 +143,6 @@ in
                 hl.exec_cmd("uwsm app -- $HOME/.local/bin/wallpaper-rotate")
                 hl.exec_cmd("uwsm app -- $HOME/.local/bin/wallpaper-monitor-watch")
                 hl.exec_cmd("uwsm app -- waybar")
-                hl.exec_cmd("uwsm app -- nm-applet --indicator")
-                hl.exec_cmd("uwsm app -- vicinae server")
               end
             '')
           ];
