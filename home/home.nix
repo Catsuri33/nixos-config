@@ -234,6 +234,30 @@
         if command -v kitty >/dev/null 2>&1 && [ "$TERM" = "xterm-kitty" ]; then
           alias ssh="kitty +kitten ssh"
         fi
+
+        # Transient prompt: once a command is submitted, redraw its two-line
+        # starship prompt as a bare "❯" so scrollback stays readable; the
+        # full prompt comes back for the next command. starship only does
+        # this natively for fish/pwsh/cmd, hence the hand-rolled ZLE hook.
+        # PROMPT is saved lazily (not at init) since starship's own init may
+        # run after this block.
+        autoload -Uz add-zle-hook-widget add-zsh-hook
+        _transient_prompt_line_finish() {
+          [[ $CONTEXT == start ]] || return 0  # skip PS2/select continuations
+          _transient_saved_prompt=$PROMPT
+          _transient_saved_rprompt=$RPROMPT
+          PROMPT='%B%F{green}❯%f%b '
+          RPROMPT=""
+          zle .reset-prompt
+        }
+        _transient_prompt_restore() {
+          [[ -v _transient_saved_prompt ]] || return 0
+          PROMPT=$_transient_saved_prompt
+          RPROMPT=$_transient_saved_rprompt
+          unset _transient_saved_prompt _transient_saved_rprompt
+        }
+        add-zle-hook-widget line-finish _transient_prompt_line_finish
+        add-zsh-hook precmd _transient_prompt_restore
       '';
     };
 
