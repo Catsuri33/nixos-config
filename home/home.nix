@@ -178,6 +178,10 @@
       enable = true;
       settings = {
         confirm_os_window_close = 0;
+        # kitty saves the last closed window's size *and* maximized state and
+        # reapplies them to new windows; under Hyprland that maximizes every
+        # new terminal over the others instead of tiling it.
+        remember_window_size = "no";
         # Needed for starship's prompt icons (folder, git branch, etc).
         font_family = "JetBrainsMono Nerd Font";
       };
