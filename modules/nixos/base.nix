@@ -227,6 +227,16 @@
 
   programs.uwsm.enable = true;
 
+  # Vicinae's input server reads /dev/input and writes /dev/uinput (pasting
+  # from clipboard/emoji, snippet expansion), so it needs a capability
+  # wrapper. The vicinae user service in home/home.nix points at it.
+  security.wrappers.vicinae-input-server = {
+    source = "${pkgs.vicinae}/libexec/vicinae/vicinae-input-server";
+    capabilities = "cap_dac_override+ep";
+    owner = "root";
+    group = "root";
+  };
+
   services.greetd = {
     enable = true;
     settings = {

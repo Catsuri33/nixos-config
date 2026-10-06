@@ -11,8 +11,6 @@
 
     hyprland.url = "github:hyprwm/Hyprland";
 
-    vicinae.url = "github:vicinaehq/vicinae";
-
     disko = {
       url = "github:nix-community/disko";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -24,7 +22,7 @@
     };
   };
 
-  outputs = { self, nixpkgs, home-manager, hyprland, vicinae, disko, lanzaboote, ... }@inputs:
+  outputs = { self, nixpkgs, home-manager, hyprland, disko, lanzaboote, ... }@inputs:
   let
     system = "x86_64-linux";
 

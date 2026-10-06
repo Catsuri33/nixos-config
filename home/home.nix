@@ -107,7 +107,10 @@
       proton-authenticator
 
       # Application launcher
-      inputs.vicinae.packages.${pkgs.stdenv.hostPlatform.system}.default
+      # From nixpkgs, not the upstream flake: that one pins its own nixpkgs,
+      # so its libEGL/libgbm drift from the Mesa in /run/opengl-driver after
+      # a flake update and Qt aborts on "Failed to create GL context".
+      vicinae
 
       # GPG
       gnupg
@@ -362,10 +365,11 @@
           PartOf = [ "graphical-session.target" ];
         };
         Service = {
-          ExecStart = "${inputs.vicinae.packages.${pkgs.stdenv.hostPlatform.system}.default}/bin/vicinae server --replace";
+          ExecStart = "${pkgs.vicinae}/bin/vicinae server --replace";
+          # Capability wrapper from modules/nixos/base.nix.
+          Environment = "VICINAE_INPUT_SERVER_BIN=/run/wrappers/bin/vicinae-input-server";
           Restart = "always";
           RestartSec = "2";
-          KillMode = "process";
         };
         Install.WantedBy = [ "graphical-session.target" ];
       };
