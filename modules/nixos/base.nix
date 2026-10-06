@@ -120,10 +120,10 @@
   boot.blacklistedKernelModules = [ "dccp" "sctp" "rds" "tipc" ];
 
   # /tmp in RAM: wiped on every boot and can't fill up the root fs.
-  # Nix builds default to /tmp too, so send them to disk-backed /var/tmp
-  # instead or a big build could exhaust RAM.
+  # Nix builds don't land there: since Nix 2.30 the daemon builds in
+  # disk-backed /nix/var/nix/builds by default. (Don't point build-dir at
+  # /var/tmp — Nix refuses world-writable build dirs.)
   boot.tmp.useTmpfs = true;
-  nix.settings.build-dir = "/var/tmp";
 
   # Kernel audit trail (auditd), kept small on purpose: no exec logging,
   # which would flood the logs on a desktop. Watches changes to identity
