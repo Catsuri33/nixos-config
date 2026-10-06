@@ -15,7 +15,11 @@
     # generation on any new host before relying on this.
     open = true;
     nvidiaSettings = true;
-    package = config.boot.kernelPackages.nvidiaPackages.stable;
+    # "latest" branch rather than "stable": currently 615.71.09 against
+    # 595.104.02 on stable. Deliberate choice to track the newest driver;
+    # if a release regresses (Wayland/Hyprland sessions are the usual
+    # casualty), fall back to .stable here — nothing else depends on it.
+    package = config.boot.kernelPackages.nvidiaPackages.latest;
   };
 
   environment.systemPackages = with pkgs; [

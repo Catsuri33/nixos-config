@@ -6,6 +6,13 @@
   boot.loader.systemd-boot.configurationLimit = 5;
   boot.loader.efi.canTouchEfiVariables = true;
 
+  # Latest mainline kernel on every host, rather than the nixpkgs default
+  # LTS series: newest hardware/driver support, and NTSync (needed by the
+  # gaming hosts for Windows game compatibility) only lands in mainline.
+  # mkDefault so a single host can pin an older series if a kernel
+  # regression ever bites, without touching this module.
+  boot.kernelPackages = lib.mkDefault pkgs.linuxPackages_latest;
+
   # RAM-backed compressed swap: nothing ever touches the disk in plaintext.
   zramSwap.enable = true;
 
