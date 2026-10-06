@@ -56,35 +56,44 @@
       '';
     });
 
+    # Wraps bin/<binName> of `inner` so it runs with /etc/ld-nix.so.preload
+    # shadowed, i.e. without hardened_malloc (same trick as spotify above).
+    # Only for apps whose .desktop entries call the binary by name, so they
+    # go through the wrapper too.
+    unhardenBin = inner: binName: pkgs.symlinkJoin {
+      name = "${inner.name}-unhardened";
+      paths = [ inner ];
+      postBuild = ''
+        rm $out/bin/${binName}
+        cat > $out/bin/${binName} <<'EOF'
+        #!${pkgs.runtimeShell}
+        preload=$(readlink -f /etc/ld-nix.so.preload 2>/dev/null)
+        if [ -n "$preload" ] && [ -e "$preload" ]; then
+          exec ${pkgs.bubblewrap}/bin/bwrap --dev-bind / / \
+            --ro-bind /dev/null "$preload" \
+            -- ${inner}/bin/${binName} "$@"
+        else
+          exec ${inner}/bin/${binName} "$@"
+        fi
+        EOF
+        chmod +x $out/bin/${binName}
+      '';
+    };
+
     # Same exemption for LibreWolf: since the 2026-10-06 nixpkgs bump it
     # aborts at startup with "fatal allocator error: invalid uninitialized
     # allocator usage" (hardened_malloc's own check) — Firefox ships its own
     # allocator (mozjemalloc) and the two now clash. Confirmed live: the
     # same binary starts normally with the preload shadowed. Little is lost
     # here, since mozjemalloc already serves the browser's allocations.
-    # Wraps whatever host modules picked as custom.librewolfPackage; the
-    # .desktop entries call `librewolf` by name, so they go through it too.
-    librewolfUnhardened = let
-      inner = config.custom.librewolfPackage;
-    in pkgs.symlinkJoin {
-      name = "${inner.name}-unhardened";
-      paths = [ inner ];
-      postBuild = ''
-        rm $out/bin/librewolf
-        cat > $out/bin/librewolf <<'EOF'
-        #!${pkgs.runtimeShell}
-        preload=$(readlink -f /etc/ld-nix.so.preload 2>/dev/null)
-        if [ -n "$preload" ] && [ -e "$preload" ]; then
-          exec ${pkgs.bubblewrap}/bin/bwrap --dev-bind / / \
-            --ro-bind /dev/null "$preload" \
-            -- ${inner}/bin/librewolf "$@"
-        else
-          exec ${inner}/bin/librewolf "$@"
-        fi
-        EOF
-        chmod +x $out/bin/librewolf
-      '';
-    };
+    # Wraps whatever host modules picked as custom.librewolfPackage.
+    librewolfUnhardened = unhardenBin config.custom.librewolfPackage "librewolf";
+
+    # And for VS Code: same abort since the same bump (Electron ships
+    # Chromium's PartitionAlloc, like Mattermost in
+    # modules/home/laptop-light.nix) — even `code --version`, which runs
+    # Electron as plain Node. Confirmed live the same way.
+    vscodeUnhardened = unhardenBin pkgs.vscode "code";
 
   in {
 
@@ -150,7 +159,7 @@
       btop
 
       # Editor
-      vscode
+      vscodeUnhardened
       claude-code
 
       # Typst
