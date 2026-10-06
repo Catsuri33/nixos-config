@@ -1,4 +1,41 @@
 { pkgs, lib, ... }:
+let
+  # Same hardened_malloc exemption as LibreWolf/Spotify (home/home.nix):
+  # since the 2026-10-06 nixpkgs bump Mattermost (Electron, which ships
+  # Chromium's own PartitionAlloc) aborts at startup with "fatal allocator
+  # error: invalid uninitialized allocator usage". Confirmed live: the same
+  # binary starts normally with /etc/ld-nix.so.preload shadowed. The
+  # upstream .desktop entry calls the binary by absolute store path, so it
+  # is rewritten to go through the wrapper too.
+  mattermostUnhardened = let
+    inner = pkgs.mattermost-desktop;
+  in pkgs.symlinkJoin {
+    name = "${inner.name}-unhardened";
+    paths = [ inner ];
+    postBuild = ''
+      rm $out/bin/mattermost-desktop
+      cat > $out/bin/mattermost-desktop <<'EOF'
+      #!${pkgs.runtimeShell}
+      preload=$(readlink -f /etc/ld-nix.so.preload 2>/dev/null)
+      if [ -n "$preload" ] && [ -e "$preload" ]; then
+        exec ${pkgs.bubblewrap}/bin/bwrap --dev-bind / / \
+          --ro-bind /dev/null "$preload" \
+          -- ${inner}/bin/mattermost-desktop "$@"
+      else
+        exec ${inner}/bin/mattermost-desktop "$@"
+      fi
+      EOF
+      chmod +x $out/bin/mattermost-desktop
+
+      for f in $out/share/applications/*.desktop; do
+        target=$(readlink -f "$f")
+        rm "$f"
+        sed "s|${inner}/bin/mattermost-desktop|$out/bin/mattermost-desktop|g" \
+          "$target" > "$f"
+      done
+    '';
+  };
+in
 {
   # Root cause (full investigation in git history — see prior revisions of
   # this file for the coredump/ldd/objdump trail): Firefox/LibreWolf's
@@ -48,7 +85,7 @@
 
   home.packages = with pkgs; [
     # Communication
-    mattermost-desktop
+    mattermostUnhardened
     zoom-us
 
     # Dev tools
