@@ -361,6 +361,9 @@
     gcc
   ];
 
+  # std sources for rust-analyzer, not shipped with nixpkgs rustc.
+  environment.variables.RUST_SRC_PATH = "${pkgs.rustPlatform.rustLibSrc}";
+
   # Dev tools (pnpm, etc.) sometimes self-download a dynamically-linked
   # standalone build instead of using the nixpkgs-packaged version - e.g.
   # pnpm's own devEngines.packageManager version check with onFail:
