@@ -95,6 +95,20 @@
     # Electron as plain Node. Confirmed live the same way.
     vscodeUnhardened = unhardenBin pkgs.vscode "code";
 
+    # Ad-hoc version for programs outside this config, e.g.
+    # `nix shell nixpkgs#chromium -c unhardened chromium` (Chromium's
+    # PartitionAlloc hits the same abort). Runs any command with the
+    # preload shadowed.
+    unhardenedCmd = pkgs.writeShellScriptBin "unhardened" ''
+      preload=$(readlink -f /etc/ld-nix.so.preload 2>/dev/null)
+      if [ -n "$preload" ] && [ -e "$preload" ]; then
+        exec ${pkgs.bubblewrap}/bin/bwrap --dev-bind / / \
+          --ro-bind /dev/null "$preload" -- "$@"
+      else
+        exec "$@"
+      fi
+    '';
+
   in {
 
     home.username = "lmichault";
@@ -161,6 +175,7 @@
       # Editor
       vscodeUnhardened
       claude-code
+      unhardenedCmd
 
       # Typst
       typst
