@@ -1,4 +1,4 @@
-{ pkgs, inputs, ... }:
+{ pkgs, lib, inputs, ... }:
 {
   imports = [
     ./hardware-configuration.nix
@@ -8,6 +8,16 @@
 
   networking.hostName = "laptop-light";
   hardware.enableRedistributableFirmware = true;
+
+  # Thermal: the shared power-saving.nix puts AC on the "performance"
+  # governor, which under intel_pstate pins EPP to performance and keeps
+  # this 15W Core Ultra 7 165U boosting to 4.9 GHz at the slightest load,
+  # riding ~90°C in a thin chassis. intel_pstate's "powersave" is still
+  # fully dynamic (it ramps up on demand), and with balance_performance
+  # EPP the cores stop sitting at max turbo when idle-ish. thermald adds
+  # proactive throttling before the firmware's own trip points.
+  services.tlp.settings.CPU_SCALING_GOVERNOR_ON_AC = lib.mkForce "powersave";
+  services.thermald.enable = true;
 
   # Boot splash: the default "bgrt" theme redraws the firmware's HP logo
   # (ACPI BGRT) with the Nix snowflake underneath, like Arch/Debian do.
