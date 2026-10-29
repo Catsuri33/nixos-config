@@ -154,7 +154,7 @@ in
           # Applications
           (mkBind "${mod} + Return" ''hl.dsp.exec_cmd("kitty")'')
           (mkBind "${mod} + R" ''hl.dsp.exec_cmd("vicinae toggle")'')
-          (mkBind "${mod} + SHIFT + L" ''hl.dsp.exec_cmd("hyprlock")'')
+          (mkBind "${mod} + SHIFT + L" ''hl.dsp.exec_cmd("loginctl lock-session")'')
 
           # Window management
           (mkBind "${mod} + Q" ''hl.dsp.window.close()'')

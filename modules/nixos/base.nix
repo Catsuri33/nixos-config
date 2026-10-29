@@ -50,6 +50,12 @@
 
   services.fwupd.enable = true;
 
+  # User-writable EPP for the lock-screen wrapper (home/home.nix) and the
+  # laptop battery-saver toggle.
+  systemd.tmpfiles.rules = [
+    "z /sys/devices/system/cpu/cpu*/cpufreq/energy_performance_preference 0664 root wheel - -"
+  ];
+
   # AppArmor LSM framework (GrapheneOS-style app confinement). This only
   # turns the framework on — nixpkgs ships few AppArmor profiles by default,
   # so actually confining a given app (browser, Discord, third-party

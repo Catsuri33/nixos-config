@@ -11,16 +11,19 @@
       CPU_SCALING_GOVERNOR_ON_BAT = "powersave";
       CPU_ENERGY_PERF_POLICY_ON_AC = "balance_performance";
       CPU_ENERGY_PERF_POLICY_ON_BAT = "power";
+      # Device power saving on AC too (battery-only by default). A device
+      # misbehaving? Use RUNTIME_PM_DENYLIST / USB_DENYLIST.
+      RUNTIME_PM_ON_AC = "auto";
+      PCIE_ASPM_ON_AC = "powersupersave";
     };
   };
 
   # Lets the SUPER+SHIFT+B battery-saver toggle (modules/home/laptop.nix)
-  # write these sysfs nodes as a normal user, same tmpfiles trick thermal.nix
+  # write the governor as a normal user, same tmpfiles trick thermal.nix
   # uses for platform_profile. Globs match every core present at boot;
-  # cpufreq/intel_pstate expose both nodes well before tmpfiles-setup.service
-  # runs.
+  # cpufreq/intel_pstate expose the node well before tmpfiles-setup.service
+  # runs. EPP gets the same rule in base.nix.
   systemd.tmpfiles.rules = [
     "z /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor 0664 root wheel - -"
-    "z /sys/devices/system/cpu/cpu*/cpufreq/energy_performance_preference 0664 root wheel - -"
   ];
 }

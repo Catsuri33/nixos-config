@@ -31,7 +31,8 @@
       label = [
         {
           monitor = "";
-          text = ''cmd[update:1000] echo "$(date +"%H:%M")"'';
+          # 10 s: minute-accurate without redrawing every second
+          text = ''cmd[update:10000] echo "$(date +"%H:%M")"'';
           color = "rgba(255, 255, 255, 0.92)";
           font_size = 88;
           font_family = "JetBrainsMono Nerd Font Bold";

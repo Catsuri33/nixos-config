@@ -109,6 +109,27 @@
       fi
     '';
 
+    # hypridle's lock_cmd (every lock goes through `loginctl lock-session`):
+    # EPP to "power" + keyboard backlight off while locked, restored on
+    # unlock. Best-effort: no-op where EPP/backlight are missing.
+    lockScreen = pkgs.writeShellScript "lock-screen" ''
+      state="''${XDG_RUNTIME_DIR:-/tmp}/lock-screen-epp"
+      : > "$state"
+      for f in /sys/devices/system/cpu/cpu[0-9]*/cpufreq/energy_performance_preference; do
+        [ -w "$f" ] || continue
+        read -r v < "$f"
+        echo "$f $v" >> "$state"
+        echo power > "$f" 2>/dev/null || true
+      done
+      ${pkgs.brightnessctl}/bin/brightnessctl -q -d '*::kbd_backlight' -s set 0 2>/dev/null || true
+
+      ${config.programs.hyprlock.package}/bin/hyprlock
+
+      while read -r f v; do echo "$v" > "$f" 2>/dev/null || true; done < "$state"
+      rm -f "$state"
+      ${pkgs.brightnessctl}/bin/brightnessctl -q -d '*::kbd_backlight' -r 2>/dev/null || true
+    '';
+
   in {
 
     home.username = "lmichault";
@@ -207,17 +228,24 @@
       enable = true;
       settings = {
         general = {
-          lock_cmd        = "pidof hyprlock || hyprlock";
+          lock_cmd        = "pidof hyprlock || ${lockScreen}";
           before_sleep_cmd = "loginctl lock-session";
           after_sleep_cmd  = "hyprctl dispatch dpms on";
         };
         listener = [
           {
+            # 30 s — displays off, only if already locked
+            timeout  = 30;
+            on-timeout = "pidof hyprlock && hyprctl dispatch dpms off";
+            on-resume  = "hyprctl dispatch dpms on";
+          }
+          {
             timeout  = 600;   # 10 min — lock screen
             on-timeout = "loginctl lock-session";
           }
           {
-            timeout  = 900;   # 15 min — turn off displays
+            # 10 min 30 — displays off after idle lock (the 30 s one won't refire)
+            timeout  = 630;
             on-timeout = "hyprctl dispatch dpms off";
             on-resume  = "hyprctl dispatch dpms on";
           }
