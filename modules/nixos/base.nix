@@ -339,6 +339,10 @@
     dnsutils
     unzip
 
+    # System-wide xterm-kitty terminfo so root shells (sudo -i, su) can run
+    # ncurses apps like nano/htop from kitty; per-user ~/.terminfo isn't seen.
+    kitty.terminfo
+
     # Security auditing (run as root: `sudo lynis audit system`)
     lynis
     # Known CVEs in the system closure: `vulnix --system`
