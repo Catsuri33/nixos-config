@@ -154,6 +154,9 @@
       # Music
       spotifyUnhardened
 
+      # Graphics
+      gimp
+
       # Proton suite
       protonmail-desktop
       proton-vpn
