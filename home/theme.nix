@@ -131,4 +131,7 @@ in
       themes = [ pkgs.whitesur-kde ];
     };
   };
+  # The kvantum module always generates kvantum.kvconfig (its settings
+  # submodule is never empty), which would clobber the one `appearance` writes.
+  xdg.configFile."Kvantum/kvantum.kvconfig".enable = false;
 }
