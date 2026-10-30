@@ -7,6 +7,7 @@
   ];
 
   networking.hostName = "laptop-light";
+  networking.hosts."162.38.114.139" = [ "gitlab.polytech.umontpellier.fr" ];
   hardware.enableRedistributableFirmware = true;
 
   # Thermal: the shared power-saving.nix puts AC on the "performance"
