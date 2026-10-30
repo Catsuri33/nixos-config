@@ -70,8 +70,10 @@ in
 
         "clock" = {
           locale = "en_US.UTF-8";
-          format = "{:%a %b %-d  %H:%M}";
-          format-alt = "{:%A, %B %-d, %Y  %H:%M:%S}";
+          # std::chrono specifiers only: glibc's %-d (no padding) is
+          # rejected and blanks the whole module.
+          format = "{:%a %b %d  %H:%M}";
+          format-alt = "{:%A, %B %d, %Y  %H:%M:%S}";
           interval = 1;
           tooltip-format = "<tt><small>{calendar}</small></tt>";
           calendar = {
@@ -197,7 +199,9 @@ in
       #custom-logo {
         font-family: "JetBrainsMono Nerd Font";
         font-size: 16px;
-        padding: 0 12px 0 14px;
+        /* The snowflake overflows its advance width by ~5px on the right,
+           so the right padding is larger to centre it in the hover box. */
+        padding: 0 16px 0 11px;
       }
 
       #window {
