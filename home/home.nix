@@ -171,6 +171,7 @@
       signal-desktop
 
       # Graphics
+      loupe
       gimp
 
       # Proton suite
@@ -266,6 +267,22 @@
       Environment.ELECTRON_OZONE_PLATFORM_HINT = "wayland";
     };
 
+    # Loupe opens images (GIMP claims the same types and could win
+    # otherwise). force replaces the mimeapps.list apps wrote at runtime;
+    # the URL handlers they registered there are kept below, since the
+    # file is now read-only and they can't re-register themselves.
+    xdg.mimeApps = {
+      enable = true;
+      defaultApplications = lib.genAttrs [
+        "image/png" "image/jpeg" "image/gif" "image/webp" "image/avif"
+        "image/heic" "image/jxl" "image/tiff" "image/bmp" "image/svg+xml"
+        "image/x-icon"
+      ] (_: "org.gnome.Loupe.desktop") // {
+        "x-scheme-handler/claude-cli" = "claude-code-url-handler.desktop";
+        "x-scheme-handler/proton-inbox" = "proton-mail.desktop";
+      };
+    };
+
     xdg.dataFile = lib.mapAttrs' (id: sections:
       lib.nameValuePair "flatpak/overrides/${id}" {
         text = lib.generators.toINI { } sections;
@@ -355,6 +372,8 @@
       "kitty/light-theme.auto.conf".text = mkKittyTheme light;
       "kitty/no-preference-theme.auto.conf".text = mkKittyTheme light;
       "kitty/dark-theme.auto.conf".text = mkKittyTheme dark;
+      # See xdg.mimeApps above.
+      "mimeapps.list".force = true;
     };
 
     # zsh-autosuggestions (fish-like greyed-out completion from history) +
