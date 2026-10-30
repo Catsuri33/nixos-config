@@ -7,7 +7,9 @@
     settings = {
       general = {
         disable_loading_bar = true;
-        grace = 3;
+        # No grace period: it also applied to the lock taken right before
+        # suspend, so reopening the lid could unlock with a mouse move.
+        grace = 0;
         hide_cursor = true;
         no_fade_in = false;
         no_fade_out = false;

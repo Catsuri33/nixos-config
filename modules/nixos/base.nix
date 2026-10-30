@@ -81,10 +81,19 @@
   # protection on an unattended machine), but auto-allow whatever's already
   # plugged in at boot (built-in keyboard/trackpad/webcam included) so it
   # can't lock out local input on activation.
+  #
+  # "allow" for boot-time devices is only the safe default for a host whose
+  # rules file hasn't been generated yet (an empty policy + "apply-policy"
+  # would block a USB keyboard at boot). It also auto-trusts anything an
+  # evil maid plugged in while the machine was off, so each host should
+  # switch to "apply-policy" once /var/lib/usbguard/rules.conf holds its
+  # real devices (`usbguard generate-policy`, see README.md). The rules
+  # file stays mutable (no services.usbguard.rules) so `allow-device -p`
+  # keeps working.
   services.usbguard = {
     enable = true;
     presentControllerPolicy = "allow";
-    presentDevicePolicy = "allow";
+    presentDevicePolicy = lib.mkDefault "allow";
   };
 
   boot.kernel.sysctl = {
@@ -119,7 +128,27 @@
     "fs.protected_hardlinks" = 1;
     "fs.protected_fifos" = 2;
     "fs.protected_regular" = 2;
+    # Constant blinding in the BPF JIT for every user, root included
+    # (JIT-spraying mitigation).
+    "net.core.bpf_jit_harden" = 2;
   };
+
+  # Kernel memory hardening (KSPP recommendations): zero pages on
+  # allocation and free (no stale data leaking between allocations, at a
+  # few % of CPU), no slab cache merging (keeps heap-overflow exploits
+  # within one object type), randomized page allocator and kernel stack
+  # offset, no legacy vsyscall page (fixed-address ROP gadgets; only
+  # pre-2011 static binaries need it), and no debugfs (large, rarely
+  # audited kernel interface).
+  boot.kernelParams = [
+    "init_on_alloc=1"
+    "init_on_free=1"
+    "slab_nomerge"
+    "page_alloc.shuffle=1"
+    "randomize_kstack_offset=on"
+    "vsyscall=none"
+    "debugfs=off"
+  ];
 
   # Rarely-used network protocols with a history of kernel CVEs; none of
   # them is needed on a desktop, so stop the kernel from autoloading them.
@@ -146,28 +175,42 @@
     ];
   };
 
-  # DNS-over-TLS (Quad9: privacy-respecting, filters known-malicious domains).
-  # IPv4 only: ProtonVPN's IPv6 leak-protection blackholes all IPv6 while
-  # connected (its own dummy "leak" interface, by design), so an IPv6 DNS
-  # server here would silently time out instead of failing over, making
-  # resolution randomly hang whenever resolved picked the IPv6 address.
+  # DNS-over-TLS to Mullvad's "base" resolver (no logging, Swedish
+  # jurisdiction, blocks ads/trackers/malware — the same role Quad9 used to
+  # fill here, Quad9 being on its way out in France). Unfiltered variant:
+  # 194.242.2.2#dns.mullvad.net. IPv4 only: ProtonVPN's IPv6
+  # leak-protection blackholes all IPv6 while connected (its own dummy
+  # "leak" interface, by design), so an IPv6 DNS server here would silently
+  # time out instead of failing over, making resolution randomly hang
+  # whenever resolved picked the IPv6 address.
   #
   # DNSOverTLS is "opportunistic", not "yes": networks like university
   # eduroam/wired campus links firewall off port 853 entirely, and a strict
   # requirement leaves no plaintext fallback, so DNS fails completely on
   # those networks. Opportunistic still encrypts whenever the server
-  # supports it and only drops to plaintext (still to Quad9, not to
-  # whatever resolver the network pushes) when TLS is unreachable.
+  # supports it and only drops to plaintext (still to Mullvad) when TLS is
+  # unreachable.
+  #
+  # Domains = "~." makes this global server the route for every lookup.
+  # Without it, the resolver each network pushes over DHCP (a per-link
+  # DefaultRoute scope) gets every query too, in plaintext, alongside the
+  # DoT one. FallbackDNS replaces systemd's built-in Google/Cloudflare
+  # list. LLMNR/mDNS off: both answer and trust unauthenticated multicast
+  # replies, the classic spoofing vector on hostile LANs (Responder).
   services.resolved = {
     enable = true;
     settings.Resolve = {
-      DNS = "9.9.9.9#dns.quad9.net";
+      DNS = "194.242.2.4#base.dns.mullvad.net";
+      FallbackDNS = "194.242.2.2#dns.mullvad.net";
+      Domains = "~.";
       DNSOverTLS = "opportunistic";
       DNSSEC = "allow-downgrade";
+      LLMNR = "false";
+      MulticastDNS = "false";
     };
   };
 
-  # DNS-over-TLS keeps a persistent TCP/TLS session open to 9.9.9.9. When
+  # DNS-over-TLS keeps a persistent TCP/TLS session open to Mullvad. When
   # ProtonVPN's killswitch rewrites the routing tables on connect/disconnect,
   # that existing session keeps trying to use the now-stale route instead of
   # failing fast, so lookups hang until resolved eventually gives up and
@@ -181,9 +224,9 @@
   # fallback. Proton's resolver doesn't speak DNS-over-TLS, so even with
   # DNSOverTLS opportunistic above, queries routed through that scope would
   # silently fall back to plaintext DNS against Proton's own resolver
-  # instead of Quad9 — leaking every lookup to Proton rather than just
+  # instead of Mullvad — leaking every lookup to Proton rather than just
   # dropping encryption on an unsupported server. Clearing proton0's own
-  # DNS/domain once it's up forces all resolution through the global Quad9
+  # DNS/domain once it's up forces all resolution through the global Mullvad
   # DoT server instead. NetworkManager keeps re-pushing proton0's own
   # DNS/domain config for as long as the connection is active, not just
   # once at startup — confirmed in practice: even a 10-second retry loop
@@ -224,13 +267,20 @@
   networking.networkmanager.enable = true;
 
   # Jellyfin NAS media share, mounted on-demand for all hosts.
-  services.rpcbind.enable = true;
+  # NFSv4 needs no portmapper on the client (rpcbind/statd are NFSv3
+  # only), but the nfs filesystem module turns rpcbind on regardless,
+  # leaving port 111 listening on every interface.
+  services.rpcbind.enable = lib.mkForce false;
   boot.supportedFilesystems = [ "nfs" ];
 
+  # nosuid/nodev/noexec: the share is unauthenticated (AUTH_SYS) and
+  # 192.168.1.0/24 is a very common subnet, so on someone else's network a
+  # host sitting at .152 could serve a setuid-root binary or a device node.
+  # A media library never needs any of them.
   fileSystems."/mnt/jellyfin" = {
     device = "192.168.1.152:/tank/jellyfin/media";
     fsType = "nfs";
-    options = [ "nfsvers=4" "noatime" "x-systemd.automount" "noauto" "x-systemd.idle-timeout=600" ];
+    options = [ "nfsvers=4" "noatime" "nosuid" "nodev" "noexec" "x-systemd.automount" "noauto" "x-systemd.idle-timeout=600" ];
   };
 
   time.timeZone = "Europe/Paris";
@@ -252,9 +302,14 @@
 
   users.users.lmichault = {
     isNormalUser = true;
-    extraGroups = [ "wheel" "networkmanager" "video" "audio" ];
+    # input/uinput: Vicinae's input server (see below).
+    extraGroups = [ "wheel" "networkmanager" "video" "audio" "input" "uinput" ];
     shell = pkgs.zsh;
-    initialPassword = "tobechanged";
+    # No initial password on purpose: this repo is public, so any password
+    # set here is known to everyone until changed. Set it during install
+    # instead (`nixos-enter --root /mnt -c 'passwd lmichault'`, see
+    # README.md). Existing hosts keep their current password
+    # (users.mutableUsers).
   };
 
   programs.hyprland = {
@@ -266,14 +321,11 @@
   programs.uwsm.enable = true;
 
   # Vicinae's input server reads /dev/input and writes /dev/uinput (pasting
-  # from clipboard/emoji, snippet expansion), so it needs a capability
-  # wrapper. The vicinae user service in home/home.nix points at it.
-  security.wrappers.vicinae-input-server = {
-    source = "${pkgs.vicinae}/libexec/vicinae/vicinae-input-server";
-    capabilities = "cap_dac_override+ep";
-    owner = "root";
-    group = "root";
-  };
+  # from clipboard/emoji, snippet expansion). Granted through the input and
+  # uinput groups (users.users.lmichault above) rather than a
+  # cap_dac_override wrapper, which bypassed every file permission check on
+  # the system for any user that ran it.
+  hardware.uinput.enable = true;
 
   services.greetd = {
     enable = true;
@@ -386,6 +438,15 @@
   # Rootless Docker: daemon runs as the user (no root-owned socket/daemon),
   # containers are mapped into the user's subuid/subgid range instead of
   # real root. DOCKER_HOST is exported automatically for normal users.
+  # Flatpak, used to sandbox the proprietary/Electron apps (Discord,
+  # Spotify, Mattermost, Zoom — installed per user from home-manager, see
+  # flatpakApps in home/home.nix). AppArmor above ships no profiles for
+  # them, so the bubblewrap sandbox (own filesystem view, portals for file
+  # access) is what actually confines them. Their runtime has its own /etc,
+  # so the host's hardened_malloc preload doesn't reach them either, which
+  # replaces the per-app "unhardened" wrappers they used to need.
+  services.flatpak.enable = true;
+
   virtualisation.docker.rootless = {
     enable = true;
     setSocketVariable = true;
@@ -397,12 +458,34 @@
     options = "--delete-older-than 30d";
   };
 
+  # Builds from the pushed GitHub repo, not ~/nixos-config: root refuses to
+  # open a git repo owned by another user (every run failed with "not owned
+  # by current user"), and building as root from a user-writable directory
+  # would let anything running as lmichault get root at the next upgrade
+  # without knowing the sudo password. Consequence: only pushed commits get
+  # applied. nixpkgs is overridden to the latest nixos-unstable on each run
+  # (the lock file of a remote flake can't be written back); every other
+  # input stays at its flake.lock revision.
   system.autoUpgrade = {
     enable = true;
-    flake = "/home/lmichault/nixos-config";
-    flags = [ "--update-input" "nixpkgs" ];
+    flake = "github:Catsuri33/nixos-config";
+    flags = [ "--override-input" "nixpkgs" "github:NixOS/nixpkgs/nixos-unstable" ];
     dates = "weekly";
     allowReboot = false;
+  };
+
+  # A failed upgrade used to go unnoticed for weeks: tell the logged-in
+  # user (desktop notification) and every terminal (wall).
+  systemd.services.nixos-upgrade.unitConfig.OnFailure = [ "nixos-upgrade-notify.service" ];
+  systemd.services.nixos-upgrade-notify = {
+    description = "Notify about a failed NixOS upgrade";
+    serviceConfig.Type = "oneshot";
+    script = ''
+      msg="Automatic NixOS upgrade failed: journalctl -u nixos-upgrade"
+      ${pkgs.util-linux}/bin/wall "$msg" || true
+      ${pkgs.systemd}/bin/systemd-run --machine=lmichault@.host --user --collect --quiet \
+        ${pkgs.libnotify}/bin/notify-send -u critical "NixOS" "$msg" || true
+    '';
   };
 
   nix.settings = {

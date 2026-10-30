@@ -25,7 +25,7 @@
       epps=(/sys/devices/system/cpu/cpu[0-9]*/cpufreq/energy_performance_preference)
 
       notify() {
-        ${pkgs.libnotify}/bin/notify-send -u low -t 2000 "Économie d'énergie" "$1"
+        ${pkgs.libnotify}/bin/notify-send -u low -t 2000 "Power saving" "$1"
       }
 
       if [ -e "$marker" ]; then
@@ -38,7 +38,7 @@
         fi
         ${pkgs.brightnessctl}/bin/brightnessctl -r >/dev/null
         rm -rf "$state_dir"
-        notify "Désactivé"
+        notify "Off"
       else
         # ON: snapshot current values so they can be restored later, then
         # push everything to its most battery-friendly setting.
@@ -59,7 +59,7 @@
         done
         ${pkgs.brightnessctl}/bin/brightnessctl -s set 30% >/dev/null
         touch "$marker"
-        notify "Activé (CPU en powersave, luminosité réduite)"
+        notify "On (CPU on powersave, brightness lowered)"
       fi
     '';
   };

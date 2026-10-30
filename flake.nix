@@ -9,8 +9,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    hyprland.url = "github:hyprwm/Hyprland";
-
     disko = {
       url = "github:nix-community/disko";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -22,7 +20,7 @@
     };
   };
 
-  outputs = { self, nixpkgs, home-manager, hyprland, disko, lanzaboote, ... }@inputs:
+  outputs = { self, nixpkgs, home-manager, disko, lanzaboote, ... }@inputs:
   let
     system = "x86_64-linux";
 

@@ -16,7 +16,7 @@ NixOS configuration with Hyprland, managed via flake and home-manager.
   privacy/security hardening (see below)
 - **nvidia** — Open-source kernel modules, kernel options and Nvidia Wayland env vars
 - **gaming** — Steam, Wine, Lutris, GameMode, MangoHud
-- **secureboot** — lanzaboote Secure Boot (desktop-gaming/laptop-light only, see below)
+- **secureboot** — lanzaboote Secure Boot (all hosts, see below)
 
 ### Home-manager modules
 
@@ -46,9 +46,9 @@ sudo nixos-rebuild switch --flake .#<name>
 
 | Host | Swap | Disk encryption |
 |------|------|------------------|
-| `laptop-gaming` | zram (encrypted-in-effect, RAM-only) | plain ext4 — disko wired in, LUKS reinstall not yet applied |
+| `laptop-gaming` | zram (encrypted-in-effect, RAM-only) | LUKS2 (disko reinstall done) |
 | `desktop-gaming` | zram | not installed yet — will be LUKS from first install |
-| `laptop-light` | zram | not installed yet — will be LUKS from first install |
+| `laptop-light` | zram | LUKS2 |
 
 ### Swap
 
@@ -61,32 +61,21 @@ ever gets written to disk in plaintext via swap.
 Each host has a `hosts/<name>/disko.nix` describing a declarative partition
 layout: an unencrypted ESP (`/boot`) + a LUKS2 partition containing ext4
 (`/`). No disk swap/LVM — zram already covers swap. `disko` is a flake input
-(`nix-community/disko`).
+(`nix-community/disko`), wired into `flake.nix` for all three hosts.
 
-- **desktop-gaming** / **laptop-light**: `disko.nixosModules.disko` and their
-  `disko.nix` are already wired into `flake.nix` — installing either from a
-  live ISO will produce a LUKS-encrypted root from the start. **The `device`
-  path in each `disko.nix` is a placeholder — check the real disk with
-  `lsblk` from the live ISO and edit it before running disko.**
-- **laptop-gaming**: `disko.nixosModules.disko` and
-  `hosts/laptop-gaming/disko.nix` are now wired into `flake.nix`, ahead of
-  the physical reinstall. This host is still live on plain ext4 today, and
-  `hosts/laptop-gaming/hardware-configuration.nix` still declares the old
-  plaintext `fileSystems`, so building/switching this config
-  (`nixos-rebuild build/switch`, including the weekly `system.autoUpgrade`)
-  fails on a conflicting `fileSystems."/".device` definition — confirmed
-  safe: the build errors out before touching the running system, it does
-  not brick anything. Still, **do not run `nixos-rebuild switch` against
-  `laptop-gaming` until immediately after the disko + `nixos-install` step**
-  — after backing up anything not tracked by this repo (SSH/GPG keys,
-  non-home-manager files in `$HOME`).
+**The `device` path in `desktop-gaming`'s `disko.nix` is a placeholder —
+check the real disk with `lsblk` from the live ISO and edit it before
+running disko.**
 
-Install flow (fresh machine or after backing up `laptop-gaming`):
+Install flow (fresh machine):
 
 ```bash
 # from a NixOS live ISO
 nix run github:nix-community/disko -- --mode disko ./hosts/<name>/disko.nix
 nixos-install --flake .#<name>
+# The config sets no user password (the repo is public): set it now,
+# otherwise lmichault can't log in.
+nixos-enter --root /mnt -c 'passwd lmichault'
 ```
 
 ```bash
@@ -113,37 +102,71 @@ Pocket, sponsored tiles and studies stripped by default, while still tracking
 Firefox's rapid security-release cadence (unlike e.g. ungoogled-chromium,
 which historically lags upstream Chromium security patches in nixpkgs).
 
+### Security updates (`system.autoUpgrade`)
+
+Weekly, built from the **pushed** GitHub repo
+(`github:Catsuri33/nixos-config`), with `nixpkgs` overridden to the latest
+`nixos-unstable` — so unpushed local commits are not applied. It no longer
+builds from `~/nixos-config`: root refuses to open a git repo it doesn't
+own (every run failed that way), and building as root from a user-writable
+directory would let any process running as `lmichault` get root at the
+next upgrade. A failed run sends a desktop notification + `wall` message
+(`nixos-upgrade-notify.service`). Flatpak apps are updated separately,
+daily (`flatpak-apps` user timer).
+
 ### System hardening (`modules/nixos/base.nix`)
 
 - `boot.kernel.sysctl` — kernel info leak reduction (`kptr_restrict`,
-  `dmesg_restrict`), disables `kexec` and unprivileged BPF, admin-only
-  `ptrace` (`yama.ptrace_scope=2` — **attaching gdb/strace to a process you
-  don't own now needs `sudo`**), network hardening (rp_filter, no ICMP
-  redirects/source-routing), `fs.protected_*`.
+  `dmesg_restrict`), disables `kexec` and unprivileged BPF, BPF JIT
+  hardening, admin-only `ptrace` (`yama.ptrace_scope=2` — **attaching
+  gdb/strace to a process you don't own now needs `sudo`**), network
+  hardening (rp_filter, no ICMP redirects/source-routing), `fs.protected_*`.
+- `boot.kernelParams` — KSPP memory hardening: `init_on_alloc=1
+  init_on_free=1 slab_nomerge page_alloc.shuffle=1
+  randomize_kstack_offset=on vsyscall=none debugfs=off`. `init_on_free`
+  costs a few % of CPU; `vsyscall=none` only breaks pre-2011 static
+  binaries.
 - `security.protectKernelImage`, `security.sudo.execWheelOnly`,
   `systemd.coredump.enable = false`, `services.fwupd.enable` (firmware
   security updates).
-- `security.apparmor.enable` — turns on the AppArmor LSM framework
-  (GrapheneOS-style app confinement). This only enables the framework:
-  nixpkgs ships few AppArmor profiles by default, so confining a specific
-  app (browser, Discord, third-party AppImages) still needs a profile added
-  for it.
+- `security.apparmor.enable` — turns on the AppArmor LSM framework. nixpkgs
+  ships few profiles, so actual app confinement comes from Flatpak (below).
+- **Flatpak sandboxing** (`services.flatpak.enable`, `custom.flatpakApps`
+  in `home/home.nix`) — Discord and Spotify (all hosts), Mattermost and
+  Zoom (`laptop-light`) are installed from Flathub per user and run in
+  bubblewrap sandboxes, with file access through portals. Not applied to
+  LibreWolf (Firefox's own sandbox is stronger than what it can build
+  nested inside Flatpak's) nor VS Code (an editor that runs compilers and
+  shells on your code would need its sandbox opened entirely).
 - `services.smartd` with `notifications.wall.enable` — SMART disk health
   monitoring, so a failing drive's pre-failure attributes show up as a
   warning before it actually dies. No mail server is configured on any
   host, so `wall` (broadcast to logged-in terminals) is used instead of
   email.
-- `services.fstrim.enable` — weekly TRIM instead of continuous `discard` on
-  the LUKS-backed SSDs: continuous discard leaks some used/free block info
-  on the encrypted volume and costs perf on every delete, so a batched
-  weekly trim is the standard security/performance compromise.
+- `services.fstrim.enable` — weekly batched TRIM rather than continuous
+  `discard`, for performance. Either way TRIM has to pass through dm-crypt
+  (`allowDiscards = true` in each `disko.nix`), so the encrypted volume
+  reveals which blocks are free — an accepted trade-off for SSD longevity
+  and speed, not something the weekly schedule avoids.
 - `environment.memoryAllocator.provider = "graphene-hardened"` —
   `hardened_malloc`, GrapheneOS's own memory allocator, packaged natively in
   NixOS. `modules/nixos/gaming.nix` overrides this to
   `"graphene-hardened-light"` on `laptop-gaming`/`desktop-gaming` (the full
-  variant has a real perf cost not worth paying for gaming).
-- `services.resolved` with DNS-over-TLS to Quad9 (privacy-respecting,
-  filters known-malicious domains).
+  variant has a real perf cost not worth paying for gaming). LibreWolf and
+  VS Code run without it (allocator clash, see `home/home.nix`).
+- `services.resolved` with DNS-over-TLS to **Mullvad DNS**
+  (`base.dns.mullvad.net`: no logging, blocks ads/trackers/malware;
+  replaces Quad9, which is leaving France). `Domains = "~."` sends every
+  lookup there, so the resolver pushed by each network's DHCP no longer
+  receives a plaintext copy. LLMNR and mDNS are off (spoofable multicast
+  name resolution). Caveat: a network that blocks outbound DNS to anything
+  but its own resolver now gets no DNS at all.
+- Vicinae's input server gets `/dev/input` + `/dev/uinput` through the
+  `input`/`uinput` groups, not a `cap_dac_override` wrapper.
+- Jellyfin NFS share mounted `nosuid,nodev,noexec`, rpcbind disabled
+  (NFSv4 doesn't need it).
+- No user password in the config (the repo is public) — set at install
+  time, see above.
 - Wi-Fi MAC randomization: `networking.networkmanager.wifi.macAddress =
   "stable"` (one random-but-persistent MAC per SSID, matching
   Android/GrapheneOS's default) + `scanRandMacAddress = true` for probes.
@@ -152,7 +175,7 @@ which historically lags upstream Chromium security patches in nixpkgs).
 
 `linuxPackages_hardened` (a hardened kernel package) was considered but
 **no longer exists in nixpkgs** (removed 2026-03-18, unmaintained) — the
-sysctl/protectKernelImage hardening above is the practical substitute and
+sysctl/kernel-parameter hardening above is the practical substitute and
 doesn't fight with `gaming.nix`'s `linuxPackages_latest` pin (needed for
 NTSync/Windows game compat) or the Nvidia driver.
 
@@ -160,28 +183,20 @@ NTSync/Windows game compat) or the Nvidia driver.
 
 Desktop analogue of GrapheneOS's verified boot. `modules/nixos/secureboot.nix`
 + the `lanzaboote` flake input replace `systemd-boot` with a signed boot
-chain.
+chain, wired into `flake.nix` for all three hosts.
 
-- **desktop-gaming** / **laptop-light**: already wired into `flake.nix` —
-  installing either from a live ISO sets up Secure Boot from the start.
-- **laptop-gaming**: deliberately **not** wired in yet (same reasoning as
-  disko above — a live host with weekly `system.autoUpgrade` shouldn't have
-  its boot chain change without a manual step first). To enable once ready:
+On an already-installed host, enroll keys before the first rebuild with it:
 
-  ```bash
-  # 1. In UEFI firmware settings: clear existing (OEM) Secure Boot keys,
-  #    switch Secure Boot to "Setup Mode" (exact wording varies by vendor).
-  # 2. Boot back into Linux, then:
-  sudo sbctl create-keys
-  sudo sbctl enroll-keys --microsoft   # keep Microsoft certs (Nvidia option ROMs, etc.)
-  # 3. Add these two lines to flake.nix's laptop-gaming modules (see
-  #    desktop-gaming for the pattern):
-  #      lanzaboote.nixosModules.lanzaboote
-  #      ./modules/nixos/secureboot.nix
-  sudo nixos-rebuild switch --flake ~/nixos-config#laptop-gaming
-  sudo sbctl verify
-  # 4. Back in UEFI firmware settings: re-enable Secure Boot enforcement.
-  ```
+```bash
+# 1. In UEFI firmware settings: clear existing (OEM) Secure Boot keys,
+#    switch Secure Boot to "Setup Mode" (exact wording varies by vendor).
+# 2. Boot back into Linux, then:
+sudo sbctl create-keys
+sudo sbctl enroll-keys --microsoft   # keep Microsoft certs (Nvidia option ROMs, etc.)
+sudo nixos-rebuild switch --flake ~/nixos-config#<name>
+sudo sbctl verify
+# 3. Back in UEFI firmware settings: re-enable Secure Boot enforcement.
+```
 
 Requires `hardware.nvidia.open = true;` (already set in `nvidia.nix`) —
 unsigned proprietary kernel modules don't load once Secure Boot's lockdown
@@ -192,11 +207,21 @@ this.
 ### USBGuard
 
 Enabled on all 3 hosts (`modules/nixos/base.nix`). Blocks any USB device
-inserted *after* boot until explicitly allowed (evil-maid/BadUSB protection
-on an unattended machine), while `presentControllerPolicy`/
-`presentDevicePolicy = "allow"` auto-trust whatever's already connected at
-boot time — built-in keyboard/trackpad/webcam included — so enabling it
-can't lock out local input.
+inserted *after* boot until explicitly allowed (evil-maid/BadUSB
+protection). Devices already connected at boot:
+
+- `laptop-light`: `presentDevicePolicy = "apply-policy"` — only those
+  listed in `/var/lib/usbguard/rules.conf` are allowed, so a device an
+  attacker plugged in while the machine was off stays blocked.
+- other hosts: `"allow"` (auto-trusted) until their rules file is
+  generated — an empty policy with `"apply-policy"` would block a USB
+  keyboard at boot. To switch a host over:
+
+```bash
+sudo usbguard generate-policy | sudo tee /var/lib/usbguard/rules.conf.new
+# review, merge with any existing rules.conf, move into place, then set
+# services.usbguard.presentDevicePolicy = "apply-policy"; in the host config
+```
 
 To allow a new device after the fact:
 
@@ -204,6 +229,14 @@ To allow a new device after the fact:
 usbguard list-devices          # find its id
 sudo usbguard allow-device <id> -p   # -p persists the rule
 ```
+
+### Other
+
+- `libvirtd` group is not granted (root-equivalent): virt-manager asks for
+  the password through polkit (`hyprpolkitagent`).
+- hyprlock has no grace period, so the lock taken before suspend can't be
+  undone by a mouse move on resume.
+- Steam Remote Play ports are opened on `desktop-gaming` only.
 
 ## Desktop utilities
 

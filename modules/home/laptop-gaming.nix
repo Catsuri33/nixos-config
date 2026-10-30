@@ -16,8 +16,8 @@
       choices_file=/sys/firmware/acpi/platform_profile_choices
 
       if [ ! -e "$profile_file" ] || [ ! -e "$choices_file" ]; then
-        ${pkgs.libnotify}/bin/notify-send -u critical "Ventilateur" \
-          "platform_profile introuvable (asus-wmi non chargé ?)"
+        ${pkgs.libnotify}/bin/notify-send -u critical "Fan" \
+          "platform_profile not found (asus-wmi not loaded?)"
         exit 1
       fi
 
@@ -36,13 +36,13 @@
       echo "$next" > "$profile_file"
 
       case "$next" in
-        low-power|quiet) label="Silencieux" ;;
-        balanced)         label="Équilibré" ;;
+        low-power|quiet) label="Silent" ;;
+        balanced)         label="Balanced" ;;
         performance)      label="Performance" ;;
         *)                label="$next" ;;
       esac
 
-      ${pkgs.libnotify}/bin/notify-send -u low -t 2000 "Profil ventilateur" "$label"
+      ${pkgs.libnotify}/bin/notify-send -u low -t 2000 "Fan profile" "$label"
     '';
   };
 

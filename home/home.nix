@@ -16,50 +16,24 @@
     description = "LibreWolf package to install.";
   };
 
+  # Flathub app IDs installed per user by the flatpak-apps service below:
+  # proprietary/Electron apps run sandboxed instead of with full access to
+  # $HOME (see services.flatpak in modules/nixos/base.nix). Host modules
+  # append to it.
+  options.custom.flatpakApps = lib.mkOption {
+    type = lib.types.listOf lib.types.str;
+    default = [ ];
+    description = "Flathub app IDs to install for the user.";
+  };
+
   config = let
 
-    # nixpkgs' spotify crashes on launch with "double free or corruption
-    # (out)" (glibc's own heap-corruption abort, not a segfault) under the
-    # GrapheneOS hardened_malloc allocator that modules/nixos/base.nix
-    # preloads for every process system-wide
-    # (environment.memoryAllocator.provider, both the "graphene-hardened"
-    # and "-light" variants apply equally here since the bug is a mismatch
-    # between allocators, not a specific check). Confirmed live: with
-    # hardened_malloc's libhardened_malloc.so mapped into Spotify's
-    # process (visible in /proc/<pid>/maps), it reliably aborts within
-    # ~1s of launch; re-running it in a private mount namespace with
-    # /etc/ld-nix.so.preload (the file NixOS's patched glibc reads to
-    # decide what to preload) shadowed by an empty file makes
-    # libhardened_malloc.so disappear from the process's maps and Spotify
-    # runs normally. Root cause is presumably a real heap bug in
-    # Spotify's closed-source binary that stock glibc's malloc tolerates
-    # but hardened_malloc's canaries/guard pages don't — either way, the
-    # exemption is scoped to just this one binary (a few-ms bwrap
-    # indirection) rather than weakening the allocator for the whole
-    # system.
-    spotifyLauncher = pkgs.writeShellScript "spotify-unhardened" ''
-      dir=$(dirname "$(readlink -f "$0")")
-      preload=$(readlink -f /etc/ld-nix.so.preload 2>/dev/null)
-      if [ -n "$preload" ] && [ -e "$preload" ]; then
-        exec ${pkgs.bubblewrap}/bin/bwrap --dev-bind / / \
-          --ro-bind /dev/null "$preload" \
-          -- "$dir/.spotify-unhardened" "$@"
-      else
-        exec "$dir/.spotify-unhardened" "$@"
-      fi
-    '';
-
-    spotifyUnhardened = pkgs.spotify.overrideAttrs (old: {
-      postFixup = (old.postFixup or "") + ''
-        mv $out/share/spotify/spotify $out/share/spotify/.spotify-unhardened
-        install -m755 ${spotifyLauncher} $out/share/spotify/spotify
-      '';
-    });
-
     # Wraps bin/<binName> of `inner` so it runs with /etc/ld-nix.so.preload
-    # shadowed, i.e. without hardened_malloc (same trick as spotify above).
-    # Only for apps whose .desktop entries call the binary by name, so they
-    # go through the wrapper too.
+    # (the file NixOS's patched glibc reads to decide what to preload)
+    # shadowed by an empty file in a private mount namespace, i.e. without
+    # the GrapheneOS hardened_malloc that modules/nixos/base.nix preloads
+    # system-wide. Only for apps whose .desktop entries call the binary by
+    # name, so they go through the wrapper too.
     unhardenBin = inner: binName: pkgs.symlinkJoin {
       name = "${inner.name}-unhardened";
       paths = [ inner ];
@@ -85,19 +59,23 @@
       '';
     };
 
-    # Same exemption for LibreWolf: since the 2026-10-06 nixpkgs bump it
-    # aborts at startup with "fatal allocator error: invalid uninitialized
-    # allocator usage" (hardened_malloc's own check) — Firefox ships its own
-    # allocator (mozjemalloc) and the two now clash. Confirmed live: the
-    # same binary starts normally with the preload shadowed. Little is lost
-    # here, since mozjemalloc already serves the browser's allocations.
-    # Wraps whatever host modules picked as custom.librewolfPackage.
+    # LibreWolf: since the 2026-10-06 nixpkgs bump it aborts at startup with
+    # "fatal allocator error: invalid uninitialized allocator usage"
+    # (hardened_malloc's own check) — Firefox ships its own allocator
+    # (mozjemalloc) and the two now clash. Confirmed live: the same binary
+    # starts normally with the preload shadowed. Little is lost here, since
+    # mozjemalloc already serves the browser's allocations. Kept out of
+    # Flatpak on purpose: Firefox's own content-process sandbox (seccomp +
+    # namespaces) is stronger than what it can set up nested inside
+    # Flatpak's. Wraps whatever host modules picked as
+    # custom.librewolfPackage.
     librewolfUnhardened = unhardenBin config.custom.librewolfPackage "librewolf";
 
     # And for VS Code: same abort since the same bump (Electron ships
-    # Chromium's PartitionAlloc, like Mattermost in
-    # modules/home/laptop-light.nix) — even `code --version`, which runs
-    # Electron as plain Node. Confirmed live the same way.
+    # Chromium's PartitionAlloc) — even `code --version`, which runs
+    # Electron as plain Node. Confirmed live the same way. Not sandboxed in
+    # Flatpak: an editor whose job is running compilers, shells and
+    # extensions on your code would need its sandbox opened up entirely.
     vscodeUnhardened = unhardenBin pkgs.vscode "code";
 
     # Ad-hoc version for programs outside this config, e.g.
@@ -173,12 +151,8 @@
       # Browser
       librewolfUnhardened
 
-      # Communication
-      discord
+      # Communication (Discord comes from Flathub, see custom.flatpakApps)
       signal-desktop
-
-      # Music
-      spotifyUnhardened
 
       # Graphics
       gimp
@@ -261,6 +235,17 @@
         ];
       };
     };
+
+    # Sandboxed via Flatpak (custom.flatpakApps option above).
+    custom.flatpakApps = [
+      "com.discordapp.Discord"
+      "com.spotify.Client"
+    ];
+
+    # Polkit authentication agent: without one, actions needing admin
+    # rights through polkit (virt-manager on qemu:///system, pkexec, …)
+    # just fail instead of prompting for the password.
+    services.hyprpolkitagent.enable = true;
 
     programs.home-manager.enable = true;
 
@@ -465,6 +450,45 @@
         Install.WantedBy = [ "timers.target" ];
       };
 
+      # Installs custom.flatpakApps from Flathub at login and keeps every
+      # installed Flatpak updated (daily timer below) — Flatpak apps don't
+      # follow the system's nixpkgs upgrades. Only installs: an ID dropped
+      # from the list stays until `flatpak uninstall --user <id>`.
+      services.flatpak-apps = {
+        Unit = {
+          Description = "Install and update Flathub apps";
+          After = [ "graphical-session.target" ];
+        };
+        Service = {
+          Type = "oneshot";
+          ExecStart = pkgs.writeShellScript "flatpak-apps" ''
+            set -eu
+            flatpak=${pkgs.flatpak}/bin/flatpak
+            $flatpak --user remote-add --if-not-exists flathub \
+              https://dl.flathub.org/repo/flathub.flatpakrepo
+            ${lib.optionalString (config.custom.flatpakApps != [ ]) ''
+              $flatpak --user install --noninteractive --or-update flathub \
+                ${lib.escapeShellArgs config.custom.flatpakApps}
+            ''}
+            $flatpak --user update --noninteractive
+            $flatpak --user uninstall --noninteractive --unused
+          '';
+          # Network is often not up yet right at login.
+          Restart = "on-failure";
+          RestartSec = "60";
+        };
+        Install.WantedBy = [ "graphical-session.target" ];
+      };
+
+      timers.flatpak-apps = {
+        Unit.Description = "Daily Flatpak update";
+        Timer = {
+          OnCalendar = "daily";
+          Persistent = true;
+        };
+        Install.WantedBy = [ "timers.target" ];
+      };
+
       services.protonvpn = {
         Unit = {
           Description = "ProtonVPN";
@@ -488,9 +512,9 @@
           PartOf = [ "graphical-session.target" ];
         };
         Service = {
+          # Its bundled input server gets /dev/input + /dev/uinput access
+          # from the input/uinput groups (modules/nixos/base.nix).
           ExecStart = "${pkgs.vicinae}/bin/vicinae server --replace";
-          # Capability wrapper from modules/nixos/base.nix.
-          Environment = "VICINAE_INPUT_SERVER_BIN=/run/wrappers/bin/vicinae-input-server";
           Restart = "always";
           RestartSec = "2";
         };
