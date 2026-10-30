@@ -26,7 +26,6 @@
   # Kernel/initrd output is silenced so it doesn't scribble over the splash.
   boot.plymouth.enable = true;
   boot.consoleLogLevel = 3;
-  boot.initrd.verbose = false;
   boot.kernelParams = [ "quiet" "splash" "udev.log_level=3" "systemd.show_status=auto" ];
   # Early KMS: plymouth ignores simpledrm and waits for a real DRM driver,
   # so without i915 in the initrd it only gets a display ~1s before greetd

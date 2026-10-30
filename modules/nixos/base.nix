@@ -16,10 +16,6 @@
   # RAM-backed compressed swap: nothing ever touches the disk in plaintext.
   zramSwap.enable = true;
 
-  # systemd initrd — required for systemd-cryptenroll (TPM2 unlock) once LUKS
-  # is in place. Safe on its own for non-encrypted hosts too.
-  boot.initrd.systemd.enable = true;
-
   # --- Privacy/security hardening (GrapheneOS-inspired) ---
 
   # hardened_malloc — GrapheneOS's own memory allocator project, packaged
@@ -302,7 +298,9 @@
 
   users.users.lmichault = {
     isNormalUser = true;
-    # input/uinput: Vicinae's input server (see below).
+    # input/uinput: Vicinae's input server (see below). Accepted risk: every
+    # process of this user, and Flatpak apps with devices=all, can read all
+    # keyboards and inject keystrokes.
     extraGroups = [ "wheel" "networkmanager" "video" "audio" "input" "uinput" ];
     shell = pkgs.zsh;
     # No initial password on purpose: this repo is public, so any password
@@ -458,17 +456,18 @@
     options = "--delete-older-than 30d";
   };
 
-  # Builds from the pushed GitHub repo, not ~/nixos-config: root refuses to
-  # open a git repo owned by another user (every run failed with "not owned
-  # by current user"), and building as root from a user-writable directory
-  # would let anything running as lmichault get root at the next upgrade
-  # without knowing the sudo password. Consequence: only pushed commits get
-  # applied. nixpkgs is overridden to the latest nixos-unstable on each run
-  # (the lock file of a remote flake can't be written back); every other
-  # input stays at its flake.lock revision.
+  # Rebuilds the config that is already deployed (inputs.self, the flake's
+  # own immutable, root-owned copy in the store) with the latest
+  # nixos-unstable; every other input stays at its flake.lock revision.
+  # Config changes are only ever applied by a manual `nixos-rebuild
+  # switch`. Not ~/nixos-config: root refuses to open a git repo owned by
+  # another user, and building as root from a user-writable directory
+  # would let anything running as lmichault get root at the next upgrade.
+  # Not the GitHub repo either: that would make a push to it (stolen
+  # token, compromised account) root on every host within a week.
   system.autoUpgrade = {
     enable = true;
-    flake = "github:Catsuri33/nixos-config";
+    flake = "path:${inputs.self}";
     flags = [ "--override-input" "nixpkgs" "github:NixOS/nixpkgs/nixos-unstable" ];
     dates = "weekly";
     allowReboot = false;
