@@ -49,7 +49,8 @@
     # shadowed by an empty file in a private mount namespace, i.e. without
     # the GrapheneOS hardened_malloc that modules/nixos/base.nix preloads
     # system-wide. Only for apps whose .desktop entries call the binary by
-    # name, so they go through the wrapper too.
+    # name, so they go through the wrapper too. D-Bus service files call it
+    # by absolute store path instead, so those are rewritten to the wrapper.
     unhardenBin = inner: binName: pkgs.symlinkJoin {
       name = "${inner.name}-unhardened";
       paths = [ inner ];
@@ -72,6 +73,12 @@
         fi
         EOF
         chmod +x $out/bin/${binName}
+        for f in $out/share/dbus-1/services/*.service; do
+          [ -e "$f" ] || continue
+          src=$(readlink -f "$f")
+          rm "$f"
+          sed "s|${inner}/bin/${binName}|$out/bin/${binName}|g" "$src" > "$f"
+        done
       '';
     };
 
@@ -93,6 +100,14 @@
     # Flatpak: an editor whose job is running compilers, shells and
     # extensions on your code would need its sandbox opened up entirely.
     vscodeUnhardened = unhardenBin pkgs.vscode "code";
+
+    # Loupe: its image decoders (glycin loaders) run in a bwrap sandbox
+    # that sets an address-space limit, and hardened_malloc's up-front
+    # virtual reservation fails under it ("fatal allocator error: failed
+    # to reserve allocator state"), so every image fails with "Loader
+    # process exited early". Confirmed live: opens fine with the preload
+    # shadowed. The decoders stay sandboxed (bwrap + seccomp).
+    loupeUnhardened = unhardenBin pkgs.loupe "loupe";
 
     # Ad-hoc version for programs outside this config, e.g.
     # `nix shell nixpkgs#chromium -c unhardened chromium` (Chromium's
@@ -171,7 +186,7 @@
       signal-desktop
 
       # Graphics
-      loupe
+      loupeUnhardened
       gimp
 
       # Proton suite
