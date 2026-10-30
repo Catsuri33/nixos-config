@@ -69,8 +69,13 @@
         #!${pkgs.runtimeShell}
         preload=$(readlink -f /etc/ld-nix.so.preload 2>/dev/null)
         if [ -n "$preload" ] && [ -e "$preload" ]; then
+          # bwrap's user namespace maps root to nobody, so ssh rejects the
+          # root-owned files /etc/ssh/ssh_config includes ("Bad owner or
+          # permissions"), breaking git push from VS Code's terminal. Make
+          # git's ssh read only the user config.
           exec ${pkgs.bubblewrap}/bin/bwrap --dev-bind / / \
             --ro-bind /dev/null "$preload" \
+            --setenv GIT_SSH_COMMAND "''${GIT_SSH_COMMAND:-ssh -F $HOME/.ssh/config}" \
             -- ${inner}/bin/${binName} "$@"
         else
           exec ${inner}/bin/${binName} "$@"
