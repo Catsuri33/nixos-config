@@ -56,13 +56,13 @@ in
         { _args = [ "XCURSOR_THEME" config.home.pointerCursor.name ]; }
       ];
 
-      # Frosted glass behind the menu bar, dock, notifications and OSD,
-      # like macOS vibrancy. ignore_alpha keeps the blur off the fully
-      # transparent margins around the dock and the notifications.
+      # Frosted glass behind the menu bar, notifications and OSD, like
+      # macOS vibrancy. ignore_alpha keeps the blur off the fully
+      # transparent margins around the notifications.
       layer_rule = [
         {
           name = "macos-vibrancy";
-          match.namespace = "^(waybar|nwg-dock.*|notifications|swayosd)$";
+          match.namespace = "^(waybar|notifications|swayosd)$";
           blur = true;
           ignore_alpha = 0.1;
         }
@@ -182,7 +182,6 @@ in
                 hl.exec_cmd("uwsm app -- $HOME/.local/bin/wallpaper-rotate")
                 hl.exec_cmd("uwsm app -- $HOME/.local/bin/wallpaper-monitor-watch")
                 hl.exec_cmd("uwsm app -- waybar")
-                hl.exec_cmd("uwsm app -- ${config.custom.dockCommand}")
               end
             '')
           ];

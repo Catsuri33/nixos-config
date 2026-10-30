@@ -7,7 +7,6 @@
     ./hyprlock.nix
     ./dunst.nix
     ./theme.nix
-    ./dock.nix
     ./osd.nix
   ];
 
