@@ -21,52 +21,109 @@ in
   programs.waybar = {
     enable = true;
 
+    # macOS menu bar: full width, flush with the top edge, translucent
+    # (Hyprland blurs what's behind it, see layer_rule in hyprland.nix).
     settings = {
       mainBar = {
         layer = "top";
         position = "top";
-        height = 40;
-        margin-top = 8;
-        margin-left = 10;
-        margin-right = 10;
-        spacing = 4;
+        height = 30;
+        spacing = 0;
 
-        modules-left   = [ "hyprland/workspaces" ];
-        modules-center = [ "clock" ];
-        modules-right  = [ "pulseaudio" "network" "custom/bluetooth" "battery" "tray" ];
+        modules-left   = [ "custom/logo" "hyprland/window" "hyprland/workspaces" ];
+        modules-center = [ ];
+        modules-right  = [
+          "tray" "network#vpn" "custom/bluetooth" "network#wired" "network#wifi"
+          "pulseaudio" "battery" "clock"
+        ];
+
+        # NixOS snowflake in place of the Apple menu.
+        "custom/logo" = {
+          format = "";
+          tooltip = false;
+          on-click = "vicinae toggle";
+        };
+
+        # Bold name of the focused app, like the frontmost-app menu.
+        "hyprland/window" = {
+          format = "{class}";
+          separate-outputs = true;
+          max-length = 30;
+          rewrite = {
+            "^$" = "Desktop";
+            "kitty" = "Terminal";
+            "librewolf" = "LibreWolf";
+            "org\\.gnome\\.Nautilus" = "Files";
+            "code" = "Code";
+            "signal" = "Signal";
+            "com\\.discordapp\\.Discord|discord" = "Discord";
+            "com\\.spotify\\.Client|[Ss]potify" = "Spotify";
+            "com\\.mattermost\\.Desktop|Mattermost" = "Mattermost";
+          };
+        };
 
         "hyprland/workspaces" = {
           disable-scroll = true;
           all-outputs = true;
           format = "{id}";
-          persistent-workspaces = {
-            "*" = 5;
-          };
         };
 
         "clock" = {
-          format = "{:%H:%M}";
-          format-alt = "{:%A, %B %d}";
-          tooltip-format = "<big>{:%B %Y}</big>\n<tt><small>{calendar}</small></tt>";
+          locale = "en_US.UTF-8";
+          format = "{:%a %b %-d  %H:%M}";
+          format-alt = "{:%A, %B %-d, %Y  %H:%M:%S}";
+          interval = 1;
+          tooltip-format = "<tt><small>{calendar}</small></tt>";
+          calendar = {
+            mode = "month";
+            format.today = "<span color='#0a84ff'><b>{}</b></span>";
+          };
         };
 
         "battery" = {
           states = {
-            warning = 30;
-            critical = 15;
+            warning = 20;
+            critical = 10;
           };
-          format = "{icon} {capacity}%";
-          format-charging = "󱐋 {capacity}%";
-          format-icons = [ "󰁺" "󰁻" "󰁼" "󰁽" "󰁾" "󰁿" "󰂀" "󰂁" "󰂂" "󰁹" ];
+          format = "{capacity}%  {icon}";
+          format-charging = "{capacity}%  󰂄";
+          format-plugged = "{capacity}%  󰚥";
+          format-icons = [ "󰂎" "󰁻" "󰁽" "󰁿" "󰂁" "󰁹" ];
+          tooltip-format = "{timeTo}";
         };
 
-        "network" = {
-          format-wifi       = "{icon}  {essid}";
+        # One module per physical link type, each pinned to its interfaces:
+        # left on auto, waybar follows the IPv6 default route, which
+        # ProtonVPN's leak guard (ipv6leakintrf0, a dummy) owns while the
+        # VPN is up, and shows that interface's name instead of an icon.
+        "network#wifi" = {
+          interface = "wl*";
+          format-wifi       = "{icon}";
           format-icons      = [ "󰤟" "󰤢" "󰤥" "󰤨" ];
-          format-ethernet   = "󰈀 {ipaddr}";
+          format-linked     = "󰤫";
           format-disconnected = "󰤭";
-          tooltip-format    = "{ifname}: {ipaddr}\n{gwaddr}";
+          tooltip-format-wifi = "{essid} ({signalStrength}%)\n{ipaddr}";
+          tooltip-format-disconnected = "Wi-Fi disconnected";
           on-click          = "nm-connection-editor";
+        };
+
+        # Hidden unless a cable (or the USB-C dock) is plugged in.
+        "network#wired" = {
+          interface = "en*";
+          format-ethernet   = "󰈀";
+          format-linked     = "󰈀";
+          format-disconnected = "";
+          tooltip-format-ethernet = "{ifname}: {ipaddr}";
+          on-click          = "nm-connection-editor";
+        };
+
+        # Shield while ProtonVPN's tunnel is up, hidden otherwise.
+        "network#vpn" = {
+          interface = "proton0";
+          format = "󰦝";
+          format-disconnected = "";
+          tooltip-format = "ProtonVPN: {ipaddr}";
+          tooltip-format-disconnected = "";
         };
 
         "custom/bluetooth" = {
@@ -77,24 +134,27 @@ in
         };
 
         "pulseaudio" = {
-          format       = "{icon} {volume}%";
+          format       = "{icon}";
           format-muted = "󰝟";
           format-icons = {
             default = [ "󰕿" "󰖀" "󰕾" ];
           };
+          tooltip-format = "{desc}: {volume}%";
           on-click = "pavucontrol";
+          on-scroll-up = "swayosd-client --output-volume raise";
+          on-scroll-down = "swayosd-client --output-volume lower";
         };
 
         "tray" = {
-          spacing = 8;
-          icon-size = 16;
+          spacing = 10;
+          icon-size = 15;
         };
       };
     };
 
     style = ''
       * {
-        font-family: "JetBrainsMono Nerd Font", sans-serif;
+        font-family: "Inter", "JetBrainsMono Nerd Font", sans-serif;
         font-size: 13px;
         min-height: 0;
         border: none;
@@ -103,88 +163,103 @@ in
       }
 
       window#waybar {
-        background: rgba(22, 22, 24, 0.82);
+        background: rgba(28, 28, 30, 0.42);
         color: #ffffff;
-        border-radius: 14px;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
       }
 
-      /* Workspaces */
+      /* Menu-bar items: highlighted on hover like macOS. */
+      #custom-logo,
+      #window,
+      #workspaces button,
+      #tray,
+      #custom-bluetooth,
+      #network,
+      #pulseaudio,
+      #battery,
+      #clock {
+        padding: 0 9px;
+        margin: 3px 1px;
+        border-radius: 6px;
+        color: rgba(255, 255, 255, 0.92);
+      }
+
+      #custom-logo:hover,
+      #workspaces button:hover,
+      #custom-bluetooth:hover,
+      #network:hover,
+      #pulseaudio:hover,
+      #battery:hover,
+      #clock:hover {
+        background: rgba(255, 255, 255, 0.14);
+      }
+
+      #custom-logo {
+        font-family: "JetBrainsMono Nerd Font";
+        font-size: 16px;
+        padding: 0 12px 0 14px;
+      }
+
+      #window {
+        font-weight: bold;
+        padding-right: 14px;
+      }
+
       #workspaces {
-        padding: 0 6px;
+        margin: 0;
       }
 
       #workspaces button {
-        padding: 4px 11px;
-        margin: 5px 2px;
+        padding: 0 6px;
         background: transparent;
-        color: rgba(235, 235, 245, 0.35);
-        border-radius: 8px;
-        font-size: 11px;
-        font-weight: bold;
+        color: rgba(255, 255, 255, 0.4);
+        font-size: 12px;
       }
 
       #workspaces button.active {
-        background: rgba(10, 132, 255, 0.25);
-        color: #0a84ff;
-      }
-
-      #workspaces button:hover {
-        background: rgba(255, 255, 255, 0.07);
-        color: rgba(235, 235, 245, 0.75);
+        color: #ffffff;
+        font-weight: bold;
       }
 
       #workspaces button.urgent {
-        background: rgba(255, 69, 58, 0.2);
         color: #ff453a;
       }
 
-      /* Clock — centered, prominent */
-      #clock {
-        color: #ffffff;
-        font-size: 15px;
-        font-weight: bold;
-        letter-spacing: 0.5px;
-        padding: 0 16px;
-      }
-
-      /* Right modules */
-      #battery,
-      #network,
       #custom-bluetooth,
+      #network,
       #pulseaudio {
-        padding: 0 10px;
-        color: rgba(235, 235, 245, 0.75);
+        font-family: "JetBrainsMono Nerd Font";
+        font-size: 15px;
+        padding: 0 8px;
       }
 
-      #tray {
-        padding: 0 10px 0 4px;
+      #battery,
+      #clock {
+        font-feature-settings: "tnum";
       }
 
-      #battery.charging { color: #30d158; }
-      #battery.warning  { color: #ff9f0a; }
-      #battery.critical {
-        color: #ff453a;
-        animation: blink 1.2s ease infinite alternate;
+      #clock {
+        padding-right: 14px;
       }
 
-      @keyframes blink {
-        to { color: rgba(255, 69, 58, 0.4); }
-      }
+      #battery.charging,
+      #battery.plugged  { color: #30d158; }
+      #battery.warning:not(.charging)  { color: #ff9f0a; }
+      #battery.critical:not(.charging) { color: #ff453a; }
 
-      #network.disconnected { color: rgba(235, 235, 245, 0.25); }
-      #pulseaudio.muted     { color: rgba(235, 235, 245, 0.25); }
-
-      #custom-bluetooth.connected { color: #0a84ff; }
-      #custom-bluetooth.off       { color: rgba(235, 235, 245, 0.25); }
+      #network.disconnected,
+      #pulseaudio.muted,
+      #custom-bluetooth.off { color: rgba(255, 255, 255, 0.35); }
 
       tooltip {
-        background: rgba(28, 28, 30, 0.96);
+        background: rgba(36, 36, 38, 0.96);
         border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 10px;
         color: #ffffff;
-        padding: 6px;
+      }
+
+      tooltip label {
+        padding: 2px 4px;
       }
     '';
   };

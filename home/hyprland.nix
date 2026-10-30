@@ -51,8 +51,21 @@ in
       };
 
       env = [
-        { _args = [ "XCURSOR_SIZE" "24" ]; }
-        { _args = [ "XCURSOR_THEME" "Adwaita" ]; }
+        # Apple cursor, installed by home.pointerCursor (home/theme.nix).
+        { _args = [ "XCURSOR_SIZE" (toString config.home.pointerCursor.size) ]; }
+        { _args = [ "XCURSOR_THEME" config.home.pointerCursor.name ]; }
+      ];
+
+      # Frosted glass behind the menu bar, dock, notifications and OSD,
+      # like macOS vibrancy. ignore_alpha keeps the blur off the fully
+      # transparent margins around the dock and the notifications.
+      layer_rule = [
+        {
+          name = "macos-vibrancy";
+          match.namespace = "^(waybar|nwg-dock.*|notifications|swayosd)$";
+          blur = true;
+          ignore_alpha = 0.1;
+        }
       ];
 
       # Screen capture allowed without a prompt for these binaries only,
@@ -75,15 +88,14 @@ in
       # the old hyprlang "general:col.active_border"-style nesting directly.
       config = {
         general = {
-          gaps_in = 6;
-          gaps_out = 12;
+          gaps_in = 5;
+          gaps_out = 10;
+          # macOS windows only have a hairline light edge, no accent border;
+          # focus shows through the shadow instead.
           border_size = 1;
           col = {
-            active_border = {
-              colors = [ "rgba(0a84ffcc)" "rgba(60c3ffcc)" ];
-              angle = 45;
-            };
-            inactive_border = "rgba(ffffff14)";
+            active_border = "rgba(ffffff26)";
+            inactive_border = "rgba(ffffff0f)";
           };
           layout = "dwindle";
           resize_on_border = true;
@@ -93,19 +105,24 @@ in
           rounding = 12;
           blur = {
             enabled = true;
-            size = 8;
+            size = 10;
             passes = 3;
             new_optimizations = true;
             xray = false;
+            # Vibrancy: blurred background keeps its colours, like macOS
+            # materials, instead of turning grey.
+            vibrancy = 0.25;
+            noise = 0.015;
           };
+          # Large, soft drop shadow: the main cue of which window is in
+          # front on macOS. Inactive windows get a lighter one.
           shadow = {
             enabled = true;
-            range = 20;
+            range = 36;
             render_power = 3;
-            color = "rgba(00000055)";
-            color_inactive = "rgba(00000030)";
+            color = "rgba(00000070)";
+            color_inactive = "rgba(00000038)";
           };
-          inactive_opacity = 0.96;
         };
 
         animations.enabled = true;
@@ -138,20 +155,20 @@ in
       curve = [
         (mkBind "easeOut" ''{ type = "bezier", points = { {0.05, 0.9}, {0.1, 1.05} } }'')
         (mkBind "linear" ''{ type = "bezier", points = { {0.0, 0.0}, {1.0, 1.0} } }'')
+        # Apple's ease-out: fast start, long gentle settle, no overshoot.
+        (mkBind "apple" ''{ type = "bezier", points = { {0.25, 1.0}, {0.5, 1.0} } }'')
       ];
 
+      # Windows scale in/out from 90% like macOS app launch/close, and
+      # workspaces slide sideways like switching Spaces.
       animation = [
-        { leaf = "windows"; enabled = true; speed = 6; bezier = "easeOut"; }
-        {
-          leaf = "windowsOut";
-          enabled = true;
-          speed = 6;
-          bezier = "default";
-          style = "popin 80%";
-        }
+        { leaf = "windows"; enabled = true; speed = 4; bezier = "apple"; style = "popin 90%"; }
+        { leaf = "windowsOut"; enabled = true; speed = 3; bezier = "apple"; style = "popin 90%"; }
+        { leaf = "windowsMove"; enabled = true; speed = 4; bezier = "apple"; }
+        { leaf = "layers"; enabled = true; speed = 3; bezier = "apple"; style = "fade"; }
         { leaf = "border"; enabled = true; speed = 10; bezier = "default"; }
-        { leaf = "fade"; enabled = true; speed = 7; bezier = "default"; }
-        { leaf = "workspaces"; enabled = true; speed = 5; bezier = "default"; }
+        { leaf = "fade"; enabled = true; speed = 4; bezier = "apple"; }
+        { leaf = "workspaces"; enabled = true; speed = 5; bezier = "apple"; style = "slide"; }
       ];
 
       # exec-once equivalent; session/systemd activation is left to uwsm.
@@ -165,6 +182,7 @@ in
                 hl.exec_cmd("uwsm app -- $HOME/.local/bin/wallpaper-rotate")
                 hl.exec_cmd("uwsm app -- $HOME/.local/bin/wallpaper-monitor-watch")
                 hl.exec_cmd("uwsm app -- waybar")
+                hl.exec_cmd("uwsm app -- ${config.custom.dockCommand}")
               end
             '')
           ];
@@ -177,6 +195,8 @@ in
           (mkBind "${mod} + Return" ''hl.dsp.exec_cmd("kitty")'')
           (mkBind "${mod} + R" ''hl.dsp.exec_cmd("vicinae toggle")'')
           (mkBind "${mod} + SHIFT + L" ''hl.dsp.exec_cmd("loginctl lock-session")'')
+          # Light/dark appearance for every app (home/theme.nix)
+          (mkBind "${mod} + SHIFT + D" ''hl.dsp.exec_cmd("appearance toggle")'')
 
           # Window management
           (mkBind "${mod} + Q" ''hl.dsp.window.close()'')
@@ -214,13 +234,14 @@ in
           '')
 
           # Media keys: repeat while held, and still trigger while the session is locked.
-          (mkBindOpts "XF86AudioRaiseVolume" ''hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+")'' { repeating = true; locked = true; })
-          (mkBindOpts "XF86AudioLowerVolume" ''hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-")'' { repeating = true; locked = true; })
-          (mkBindOpts "XF86MonBrightnessUp" ''hl.dsp.exec_cmd("brightnessctl set 10%+")'' { repeating = true; locked = true; })
-          (mkBindOpts "XF86MonBrightnessDown" ''hl.dsp.exec_cmd("brightnessctl set 10%-")'' { repeating = true; locked = true; })
+          # swayosd-client changes the level and shows the macOS-style HUD.
+          (mkBindOpts "XF86AudioRaiseVolume" ''hl.dsp.exec_cmd("swayosd-client --output-volume +5")'' { repeating = true; locked = true; })
+          (mkBindOpts "XF86AudioLowerVolume" ''hl.dsp.exec_cmd("swayosd-client --output-volume -5")'' { repeating = true; locked = true; })
+          (mkBindOpts "XF86MonBrightnessUp" ''hl.dsp.exec_cmd("swayosd-client --brightness +10")'' { repeating = true; locked = true; })
+          (mkBindOpts "XF86MonBrightnessDown" ''hl.dsp.exec_cmd("swayosd-client --brightness -10")'' { repeating = true; locked = true; })
 
           # Media keys: single trigger, still works while the session is locked.
-          (mkBindOpts "XF86AudioMute" ''hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle")'' { locked = true; })
+          (mkBindOpts "XF86AudioMute" ''hl.dsp.exec_cmd("swayosd-client --output-volume mute-toggle")'' { locked = true; })
           (mkBindOpts "XF86AudioPlay" ''hl.dsp.exec_cmd("playerctl play-pause")'' { locked = true; })
           (mkBindOpts "XF86AudioNext" ''hl.dsp.exec_cmd("playerctl next")'' { locked = true; })
           (mkBindOpts "XF86AudioPrev" ''hl.dsp.exec_cmd("playerctl previous")'' { locked = true; })

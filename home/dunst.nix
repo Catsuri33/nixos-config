@@ -9,7 +9,7 @@
         follow = "mouse";
         origin = "top-right";
         offset = "12x12";
-        width = 340;
+        width = 360;
         height = "0-200";
         notification_limit = 5;
 
@@ -18,13 +18,13 @@
         separator_color = "#ffffff14";
         separator_height = 1;
         gap_size = 8;
-        corner_radius = 14;
+        corner_radius = 16;
 
         padding = 14;
         horizontal_padding = 14;
         text_icon_padding = 10;
 
-        font = "JetBrainsMono Nerd Font 10";
+        font = "Inter 10";
         line_height = 2;
         markup = "full";
         format = "<b>%s</b>\\n%b";
@@ -34,7 +34,7 @@
         shrink = "yes";
 
         icon_position = "left";
-        min_icon_size = 32;
+        min_icon_size = 40;
         max_icon_size = 48;
 
         progress_bar = true;
@@ -51,24 +51,25 @@
         mouse_right_click = "close_all";
       };
 
-      # Matches the waybar/hyprlock palette: translucent macOS-style dark
-      # background, systemBlue/systemRed accent frames.
+      # macOS notification banners: frosted glass (blurred by Hyprland,
+      # see layer_rule in hyprland.nix), hairline edge, no accent colour
+      # except red for critical ones.
       urgency_low = {
-        background = "#161618d1";
+        background = "#2a2a2e8c";
         foreground = "#ebebf5bf";
-        frame_color = "#ffffff14";
+        frame_color = "#ffffff1f";
         timeout = 4;
       };
 
       urgency_normal = {
-        background = "#161618d1";
+        background = "#2a2a2e8c";
         foreground = "#ffffff";
-        frame_color = "#0a84ffcc";
+        frame_color = "#ffffff1f";
         timeout = 6;
       };
 
       urgency_critical = {
-        background = "#1c1c1ef5";
+        background = "#2a2a2ee0";
         foreground = "#ffffff";
         frame_color = "#ff453acc";
         timeout = 0;

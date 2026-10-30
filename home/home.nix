@@ -6,6 +6,9 @@
     ./waybar.nix
     ./hyprlock.nix
     ./dunst.nix
+    ./theme.nix
+    ./dock.nix
+    ./osd.nix
   ];
 
   # Lets host-specific modules (e.g. modules/home/nvidia.nix) swap in a
@@ -286,7 +289,73 @@
         remember_window_size = "no";
         # Needed for starship's prompt icons (folder, git branch, etc).
         font_family = "JetBrainsMono Nerd Font";
+        font_size = 11;
+
+        # macOS Terminal-like: translucent glass (blurred by Hyprland),
+        # roomy padding, no title bar. Colours: see the auto themes below.
+        background_opacity = "0.82";
+        window_padding_width = 12;
+        hide_window_decorations = "yes";
+        cursor_shape = "beam";
+        cursor_blink_interval = 0;
       };
+    };
+
+    # kitty follows the system appearance (`appearance`, home/theme.nix)
+    # live through these auto theme files: Apple's system colours, light
+    # and dark variants. no-preference = light, the default.
+    xdg.configFile = let
+      mkKittyTheme = c: lib.concatStrings (lib.mapAttrsToList (k: v: "${k} ${v}\n") c);
+      light = {
+        foreground = "#1d1d1f";
+        background = "#ffffff";
+        selection_background = "#b3d7ff";
+        selection_foreground = "#1d1d1f";
+        cursor = "#1d1d1f";
+        color0 = "#1d1d1f";
+        color8 = "#8e8e93";
+        color1 = "#d70015";
+        color9 = "#ff3b30";
+        color2 = "#248a3d";
+        color10 = "#34c759";
+        color3 = "#b25000";
+        color11 = "#ff9500";
+        color4 = "#0040dd";
+        color12 = "#007aff";
+        color5 = "#8944ab";
+        color13 = "#af52de";
+        color6 = "#0071a4";
+        color14 = "#32ade6";
+        color7 = "#6e6e73";
+        color15 = "#aeaeb2";
+      };
+      dark = {
+        foreground = "#ffffff";
+        background = "#1e1e1e";
+        selection_background = "#3f638b";
+        selection_foreground = "#ffffff";
+        cursor = "#ffffff";
+        color0 = "#1e1e1e";
+        color8 = "#8e8e93";
+        color1 = "#ff453a";
+        color9 = "#ff6961";
+        color2 = "#30d158";
+        color10 = "#4ae070";
+        color3 = "#ffd60a";
+        color11 = "#ffe04d";
+        color4 = "#0a84ff";
+        color12 = "#409cff";
+        color5 = "#bf5af2";
+        color13 = "#da8fff";
+        color6 = "#64d2ff";
+        color14 = "#8fdcff";
+        color7 = "#d1d1d6";
+        color15 = "#ffffff";
+      };
+    in {
+      "kitty/light-theme.auto.conf".text = mkKittyTheme light;
+      "kitty/no-preference-theme.auto.conf".text = mkKittyTheme light;
+      "kitty/dark-theme.auto.conf".text = mkKittyTheme dark;
     };
 
     # zsh-autosuggestions (fish-like greyed-out completion from history) +

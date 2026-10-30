@@ -298,6 +298,8 @@
 
   users.users.lmichault = {
     isNormalUser = true;
+    # Full name: shown on the lock screen (hyprlock $DESC).
+    description = "Louis Michault";
     # input/uinput: Vicinae's input server (see below). Accepted risk: every
     # process of this user, and Flatpak apps with devices=all, can read all
     # keyboards and inject keystrokes.
@@ -381,9 +383,15 @@
 
   fonts.packages = with pkgs; [
     nerd-fonts.jetbrains-mono
+    # SF Pro stand-in for the macOS look (home/theme.nix).
+    inter
     noto-fonts
     noto-fonts-color-emoji
   ];
+  fonts.fontconfig.defaultFonts = {
+    sansSerif = [ "Inter" "Noto Sans" ];
+    monospace = [ "JetBrainsMono Nerd Font" ];
+  };
 
   environment.systemPackages = with pkgs; [
     git
