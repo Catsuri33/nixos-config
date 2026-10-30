@@ -55,6 +55,22 @@ in
         { _args = [ "XCURSOR_THEME" "Adwaita" ]; }
       ];
 
+      # Screen capture allowed without a prompt for these binaries only,
+      # matched on the client's resolved executable (wrapped programs run
+      # as .<name>-wrapped, hence the whole store path). The portal covers
+      # screen sharing for every sandboxed app, which goes through its own
+      # picker anyway; hyprlock needs it for its blurred-screenshot
+      # background.
+      permission = map (pkg: {
+        _args = [ "${lib.escapeRegex "${pkg}"}/.*" "screencopy" "allow" ];
+      }) [
+        pkgs.xdg-desktop-portal-hyprland
+        pkgs.grim
+        pkgs.hyprpicker
+        pkgs.wf-recorder
+        config.programs.hyprlock.package
+      ];
+
       # hl.config walks nested tables into dotted config keys, so this mirrors
       # the old hyprlang "general:col.active_border"-style nesting directly.
       config = {
@@ -100,6 +116,12 @@ in
           force_default_wallpaper = 0;
           disable_hyprland_logo = true;
         };
+
+        # Without it any Wayland client (Flatpak apps included, they get
+        # the Wayland socket) can capture the screen silently through
+        # wlr-screencopy. With it, a client not allowed below gets a
+        # hyprland-dialog prompt instead. See `permission` further down.
+        ecosystem.enforce_permissions = true;
 
         input = {
           kb_layout = "fr";

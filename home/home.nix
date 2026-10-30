@@ -26,6 +26,20 @@
     description = "Flathub app IDs to install for the user.";
   };
 
+  # Per-app Flatpak permission overrides, app ID -> INI sections, written
+  # to ~/.local/share/flatpak/overrides/<id> (same file as `flatpak
+  # override --user`, which can't edit them any more since they're
+  # read-only store links). Flathub's own manifests grant more than these
+  # apps need: home = $HOME (so ~/.config/autostart, i.e. code execution
+  # outside the sandbox at next login), devices=all = every /dev node the
+  # user can open, x11 = XWayland, where any X client can read the
+  # others' input and windows.
+  options.custom.flatpakOverrides = lib.mkOption {
+    type = lib.types.attrsOf (lib.types.attrsOf (lib.types.attrsOf lib.types.str));
+    default = { };
+    description = "Flatpak override files, app ID -> INI sections.";
+  };
+
   config = let
 
     # Wraps bin/<binName> of `inner` so it runs with /etc/ld-nix.so.preload
@@ -241,6 +255,19 @@
       "com.discordapp.Discord"
       "com.spotify.Client"
     ];
+
+    # Discord keeps devices=all: Flatpak has no camera-only permission and
+    # video calls need /dev/video*. X11 is dropped, so Electron is pointed
+    # at Wayland. Spotify's manifest is already narrow (dri, fallback-x11).
+    custom.flatpakOverrides."com.discordapp.Discord" = {
+      Context.sockets = "!x11;fallback-x11;";
+      Environment.ELECTRON_OZONE_PLATFORM_HINT = "wayland";
+    };
+
+    xdg.dataFile = lib.mapAttrs' (id: sections:
+      lib.nameValuePair "flatpak/overrides/${id}" {
+        text = lib.generators.toINI { } sections;
+      }) config.custom.flatpakOverrides;
 
     # Polkit authentication agent: without one, actions needing admin
     # rights through polkit (virt-manager on qemu:///system, pkexec, …)

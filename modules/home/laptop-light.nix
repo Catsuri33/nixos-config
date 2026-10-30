@@ -55,6 +55,21 @@
     "us.zoom.Zoom"
   ];
 
+  # Narrowed manifests (see custom.flatpakOverrides in home/home.nix).
+  # Mattermost: no $HOME (downloads only), GPU only, Wayland only. Zoom
+  # keeps devices=all for the webcam.
+  custom.flatpakOverrides = {
+    "com.mattermost.Desktop" = {
+      Context = {
+        filesystems = "!home;xdg-download;";
+        devices = "!all;dri;";
+        sockets = "!x11;fallback-x11;";
+      };
+      Environment.ELECTRON_OZONE_PLATFORM_HINT = "wayland";
+    };
+    "us.zoom.Zoom".Context.sockets = "!x11;fallback-x11;";
+  };
+
   home.packages = with pkgs; [
     # Dev tools
     dbeaver-bin

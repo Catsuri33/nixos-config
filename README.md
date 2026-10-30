@@ -104,13 +104,18 @@ which historically lags upstream Chromium security patches in nixpkgs).
 
 ### Security updates (`system.autoUpgrade`)
 
-Weekly, built from the **pushed** GitHub repo
-(`github:Catsuri33/nixos-config`), with `nixpkgs` overridden to the latest
-`nixos-unstable` — so unpushed local commits are not applied. It no longer
-builds from `~/nixos-config`: root refuses to open a git repo it doesn't
-own (every run failed that way), and building as root from a user-writable
-directory would let any process running as `lmichault` get root at the
-next upgrade. A failed run sends a desktop notification + `wall` message
+Weekly, rebuilds the config **already deployed** — the flake's own copy in
+the Nix store (`inputs.self`, immutable and root-owned) — with `nixpkgs`
+overridden to the latest `nixos-unstable`. It only brings package updates:
+config changes are applied by a manual `nixos-rebuild switch`, never by the
+timer. It doesn't build from `~/nixos-config` (root refuses to open a git
+repo it doesn't own, and building as root from a user-writable directory
+would let any process running as `lmichault` get root at the next
+upgrade), nor from the GitHub repo (a push to it — stolen token,
+compromised account — would become root on every host within a week).
+Since nixpkgs moves on without the config, an upgrade can fail on a
+removed option: the next manual `nix flake update` + rebuild fixes it.
+A failed run sends a desktop notification + `wall` message
 (`nixos-upgrade-notify.service`). Flatpak apps are updated separately,
 daily (`flatpak-apps` user timer).
 
@@ -134,7 +139,16 @@ daily (`flatpak-apps` user timer).
 - **Flatpak sandboxing** (`services.flatpak.enable`, `custom.flatpakApps`
   in `home/home.nix`) — Discord and Spotify (all hosts), Mattermost and
   Zoom (`laptop-light`) are installed from Flathub per user and run in
-  bubblewrap sandboxes, with file access through portals. Not applied to
+  bubblewrap sandboxes, with file access through portals. Flathub's
+  manifests are narrowed with per-app overrides (`custom.flatpakOverrides`,
+  written to `~/.local/share/flatpak/overrides/`): no X11 socket (XWayland
+  lets any X client read the others' input and windows), and Mattermost
+  loses `$HOME` access (it could write `~/.config/autostart`, i.e. run code
+  outside the sandbox) and `devices=all`. Discord and Zoom keep
+  `devices=all` for the webcam — with it they can read `/dev/input` and
+  write `/dev/uinput` through the user's `input`/`uinput` groups (needed by
+  Vicinae, accepted risk). `flatpak override --user` can't edit these
+  files any more (read-only store links): change them in the config. Not applied to
   LibreWolf (Firefox's own sandbox is stronger than what it can build
   nested inside Flatpak's) nor VS Code (an editor that runs compilers and
   shells on your code would need its sandbox opened entirely).
@@ -237,6 +251,9 @@ sudo usbguard allow-device <id> -p   # -p persists the rule
 - hyprlock has no grace period, so the lock taken before suspend can't be
   undone by a mouse move on resume.
 - Steam Remote Play ports are opened on `desktop-gaming` only.
+- Hyprland `ecosystem.enforce_permissions`: only the portal, grim,
+  hyprpicker, wf-recorder and hyprlock may capture the screen; any other
+  client gets a prompt (`home/hyprland.nix`).
 
 ## Desktop utilities
 
