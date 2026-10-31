@@ -453,9 +453,34 @@
   # replaces the per-app "unhardened" wrappers they used to need.
   services.flatpak.enable = true;
 
+  # Rootless containers can't reach resolved's 127.0.0.53 stub (rootlesskit
+  # runs with --disable-host-loopback), so Docker falls back to the upstream
+  # servers in /run/systemd/resolve/resolv.conf, i.e. Mullvad, and queries
+  # them in plain DNS on port 53, which Mullvad refuses (it only serves
+  # DoT/DoH): every lookup in a container or a build fails with REFUSED.
+  # Instead, resolved also listens on an address outside 127.0.0.0/8, which
+  # slirp4netns does let containers reach, so their lookups go through the
+  # same Mullvad DoT path as the host's. 192.0.2.0/24 is TEST-NET-1, never
+  # routed, so it can't collide with a real network. It sits on lo, which
+  # NetworkManager leaves alone and the firewall trusts. Added by a unit of
+  # its own: networking.interfaces.lo generates network-addresses-lo, but
+  # with NetworkManager nothing pulls that unit in, so it never runs.
+  systemd.services.resolved-container-address = {
+    description = "Address for rootless containers to reach resolved";
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = "${pkgs.iproute2}/bin/ip addr replace 192.0.2.53/32 dev lo";
+      ExecStop = "${pkgs.iproute2}/bin/ip addr del 192.0.2.53/32 dev lo";
+    };
+  };
+  services.resolved.settings.Resolve.DNSStubListenerExtra = "192.0.2.53";
+
   virtualisation.docker.rootless = {
     enable = true;
     setSocketVariable = true;
+    daemon.settings.dns = [ "192.0.2.53" ];
   };
 
   nix.gc = {
