@@ -232,7 +232,10 @@
   # NetworkManager-dispatcher.service's own cgroup, which stops within
   # ~10-20s of the script returning (confirmed via journalctl), killing
   # any child left in that cgroup. systemd-run detaches the loop into its
-  # own transient unit so it survives past that.
+  # own transient unit so it survives past that. Absolute paths throughout:
+  # that transient unit's PATH has no coreutils, so a bare `sleep` failed
+  # ("command not found") and the loop spun without pause, hammering
+  # resolved over D-Bus.
   networking.networkmanager.dispatcherScripts = [
     {
       type = "basic";
@@ -243,15 +246,40 @@
         if [ "$1" = "proton0" ] && [ "$2" = "up" ]; then
           ${pkgs.systemd}/bin/systemd-run --collect --unit=protonvpn-dns-clear ${pkgs.bash}/bin/bash -c '
             while ${pkgs.iproute2}/bin/ip link show proton0 >/dev/null 2>&1; do
-              resolvectl dns proton0 ""
-              resolvectl domain proton0 ""
-              sleep 2
+              ${pkgs.systemd}/bin/resolvectl dns proton0 ""
+              ${pkgs.systemd}/bin/resolvectl domain proton0 ""
+              ${pkgs.coreutils}/bin/sleep 2
             done
           '
         fi
       '';
     }
   ];
+
+  # Same stale-DoT problem after suspend, but the restart above never fires:
+  # NetworkManager keeps proton0/wg1/Wi-Fi "activated" across the sleep, so
+  # no up/down events. Meanwhile resolved probes Mullvad on wake before
+  # Wi-Fi has reassociated, degrades TLS -> UDP -> TCP, and DNS stays dead
+  # until a VPN reconnect restarts it (confirmed in the journal: the tunnel
+  # itself came back fine). Restart resolved once the link is back, retrying
+  # until a lookup goes through.
+  systemd.services.resolved-resume-restart = {
+    description = "Restart systemd-resolved after resume";
+    after = [ "suspend.target" "hibernate.target" "hybrid-sleep.target" "suspend-then-hibernate.target" ];
+    wantedBy = [ "suspend.target" "hibernate.target" "hybrid-sleep.target" "suspend-then-hibernate.target" ];
+    path = [ pkgs.systemd pkgs.coreutils ];
+    script = ''
+      for _ in $(seq 12); do
+        sleep 5
+        systemctl restart systemd-resolved.service
+        sleep 1
+        if timeout 10 resolvectl query --cache=no nixos.org >/dev/null 2>&1; then
+          exit 0
+        fi
+      done
+      exit 1
+    '';
+  };
 
   # Wi-Fi MAC randomization: one random-but-stable MAC per SSID (mirrors
   # Android/GrapheneOS's default), plus always-randomized scan probes.
