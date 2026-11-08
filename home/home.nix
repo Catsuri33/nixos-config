@@ -109,6 +109,11 @@
     # shadowed. The decoders stay sandboxed (bwrap + seccomp).
     loupeUnhardened = unhardenBin pkgs.loupe "loupe";
 
+    # Signal: same "invalid uninitialized allocator usage" abort as VS Code
+    # (also Electron, so PartitionAlloc). Confirmed live: starts normally
+    # with the preload shadowed.
+    signalUnhardened = unhardenBin pkgs.signal-desktop "signal-desktop";
+
     # Ad-hoc version for programs outside this config, e.g.
     # `nix shell nixpkgs#chromium -c unhardened chromium` (Chromium's
     # PartitionAlloc hits the same abort). Runs any command with the
@@ -183,7 +188,7 @@
       librewolfUnhardened
 
       # Communication (Discord comes from Flathub, see custom.flatpakApps)
-      signal-desktop
+      signalUnhardened
 
       # Graphics
       loupeUnhardened
