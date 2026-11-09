@@ -534,6 +534,21 @@
     allowReboot = false;
   };
 
+  # The timer is Persistent, so a missed run fires right at boot — often on
+  # a network that blocks DNS to Mullvad until ProtonVPN is up, which made
+  # the fetch fail within two minutes. Wait (up to 15 min) for a working
+  # lookup before starting.
+  systemd.services.nixos-upgrade.preStart = ''
+    for _ in $(${pkgs.coreutils}/bin/seq 90); do
+      if ${pkgs.coreutils}/bin/timeout 10 ${pkgs.systemd}/bin/resolvectl query --cache=no channels.nixos.org >/dev/null 2>&1; then
+        exit 0
+      fi
+      ${pkgs.coreutils}/bin/sleep 10
+    done
+    echo "no working DNS after 15 min" >&2
+    exit 1
+  '';
+
   # A failed upgrade used to go unnoticed for weeks: tell the logged-in
   # user (desktop notification) and every terminal (wall).
   systemd.services.nixos-upgrade.unitConfig.OnFailure = [ "nixos-upgrade-notify.service" ];
