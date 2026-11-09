@@ -563,6 +563,73 @@
     '';
   };
 
+  # Progress of a running upgrade as one low-urgency notification (dunst
+  # sorts it below the others), updated in place through its stack tag.
+  # Nix has no progress bar without a terminal, so count its log instead:
+  # "these N paths will be fetched" / "derivations will be built" give the
+  # total, each "copying path" / "building" line one more done. It counts
+  # paths, not bytes, and the total grows once (nixos-rebuild is built
+  # first, then the system).
+  systemd.services.nixos-upgrade-progress = {
+    description = "Show NixOS upgrade progress";
+    wantedBy = [ "nixos-upgrade.service" ];
+    path = [ pkgs.systemd pkgs.gawk pkgs.coreutils ];
+    script = ''
+      unit=nixos-upgrade.service
+      shown=""
+      notify() {
+        local body=$1 value=$2 timeout=''${3:-0}
+        [ "$body|$value" = "$shown" ] && return 0
+        shown="$body|$value"
+        args=(-u low -t "$timeout" -h string:x-dunst-stack-tag:nixos-upgrade)
+        [ -n "$value" ] && args+=(-h "int:value:$value")
+        systemd-run --machine=lmichault@.host --user --collect --quiet \
+          ${pkgs.libnotify}/bin/notify-send "''${args[@]}" "NixOS upgrade" "$body" || true
+      }
+
+      started=0
+      for tries in $(seq 1000000); do
+        if [ "$(systemctl show -P ActiveState $unit)" != activating ]; then
+          # Both jobs start together: give the upgrade a moment to begin.
+          [ "$started" = 1 ] || [ "$tries" -gt 10 ] && break
+          sleep 1
+          continue
+        fi
+        started=1
+        if [ "$(systemctl show -P SubState $unit)" = start-pre ]; then
+          notify "Waiting for network…"
+        else
+          id=$(systemctl show -P InvocationID $unit)
+          read -r total count switching < <(journalctl -q -o cat _SYSTEMD_INVOCATION_ID="$id" | awk '
+            /^ *these [0-9]+ (paths will be fetched|derivations will be built)/ { t += $2 }
+            /^ *this (path will be fetched|derivation will be built)/ { t += 1 }
+            /^copying path / || /^building .\/nix\// { d++ }
+            /^switching to system configuration/ { s = 1 }
+            END { print t + 0, d + 0, s + 0 }')
+          if [ "$switching" = 1 ]; then
+            notify "Activating the new configuration…" 100
+          elif [ "$total" -gt 0 ]; then
+            pct=$(( count * 100 / total ))
+            [ "$pct" -gt 99 ] && pct=99
+            notify "$count / $total paths" "$pct"
+          else
+            notify "Checking for updates…"
+          fi
+        fi
+        sleep 3
+      done
+
+      [ "$started" = 1 ] || exit 0
+      # On failure nixos-upgrade-notify raises the critical alert: just
+      # clear this one.
+      if [ "$(systemctl show -P Result $unit)" = success ]; then
+        notify "Done" "" 5000
+      else
+        notify "Failed" "" 1
+      fi
+    '';
+  };
+
   nix.settings = {
     auto-optimise-store = true;
     experimental-features = [ "nix-command" "flakes" ];
