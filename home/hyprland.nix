@@ -180,9 +180,7 @@ in
               function()
                 hl.exec_cmd("uwsm app -- awww-daemon")
                 hl.exec_cmd("uwsm app -- $HOME/.local/bin/wallpaper-rotate")
-                hl.exec_cmd("uwsm app -- $HOME/.local/bin/wallpaper-monitor-watch")
-                hl.exec_cmd("uwsm app -- waybar")
-              end
+                hl.exec_cmd("uwsm app -- $HOME/.local/bin/wallpaper-monitor-watch")              end
             '')
           ];
         }

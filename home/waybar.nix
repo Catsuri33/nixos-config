@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 let
   bluetoothStatus = pkgs.writeShellScript "waybar-bluetooth" ''
@@ -20,6 +20,9 @@ in
 {
   programs.waybar = {
     enable = true;
+    # Run as a user unit rather than from hyprland.start: a rebuild restarts
+    # pipewire-pulse, and waybar exits when its PulseAudio connection drops.
+    systemd.enable = true;
 
     # macOS menu bar: full width, flush with the top edge, translucent
     # (Hyprland blurs what's behind it, see layer_rule in hyprland.nix).
@@ -266,5 +269,11 @@ in
         padding: 2px 4px;
       }
     '';
+  };
+
+  # The module's Restart=on-failure misses a clean exit on PulseAudio loss.
+  systemd.user.services.waybar.Service = {
+    Restart = lib.mkForce "always";
+    RestartSec = 1;
   };
 }
