@@ -70,6 +70,111 @@
     "us.zoom.Zoom".Context.sockets = "!x11;fallback-x11;";
   };
 
+  # Password prompt every time a Discord window gets focus after focus was
+  # somewhere else (polkit action in hosts/laptop-light/configuration.nix,
+  # answered by hyprpolkitagent). Listens on Hyprland's event socket: on
+  # focus, every Discord window is moved to a hidden special workspace
+  # while the prompt is up, and back where it was once authenticated. On
+  # cancel they stay hidden; launching Discord again brings them back (and
+  # prompts). Moving focus to any other window locks it again.
+  #
+  # The prompt's own dialog takes focus too, and the focus events of the
+  # unlock itself are still queued when pkcheck returns: "unlocking" waits
+  # for Discord's focus (or 2 s) before focus elsewhere counts as leaving.
+  systemd.user.services.discord-lock = {
+    Unit = {
+      Description = "Ask for the password when Discord gets focus";
+      After = [ "graphical-session.target" ];
+      PartOf = [ "graphical-session.target" ];
+    };
+    Service = {
+      ExecStart = pkgs.writeShellScript "discord-lock" ''
+        hyprctl=${pkgs.hyprland}/bin/hyprctl
+        jq=${pkgs.jq}/bin/jq
+        dispatch() { "$hyprctl" dispatch "$1" > /dev/null; }
+
+        state=locked
+        since=0
+        class=
+        ${pkgs.socat}/bin/socat -U - UNIX-CONNECT:"$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock" |
+        while IFS= read -r line; do
+          # Each focus change is "activewindow>>class,title" followed by
+          # "activewindowv2>>address".
+          case "$line" in
+            "activewindow>>"*) class="''${line#*>>}"; class="''${class%%,*}"; continue ;;
+            "activewindowv2>>"*) addr="0x''${line#*>>}" ;;
+            *) continue ;;
+          esac
+
+          if [ "$class" != discord ]; then
+            if [ "$state" = unlocked ] ||
+              { [ "$state" = unlocking ] && [ $((SECONDS - since)) -ge 2 ]; }; then
+              state=locked
+            fi
+            continue
+          fi
+          case "$state" in
+            unlocked) continue ;;
+            unlocking) state=unlocked; continue ;;
+          esac
+
+          windows=$("$hyprctl" clients -j | "$jq" -r '.[]
+            | select(.class == "discord" and .workspace.name != "special:discordlock")
+            | "\(.address) \(.workspace.id)"')
+          printf '%s\n' "$windows" | while read -r a ws; do
+            [ -n "$a" ] && dispatch "hl.dsp.window.move({ workspace = \"special:discordlock\", window = \"address:$a\", follow = false })"
+          done
+
+          if ${pkgs.polkit}/bin/pkcheck --action-id local.discord.open \
+            --process $$ --allow-user-interaction > /dev/null; then
+            state=unlocking
+            since=$SECONDS
+            printf '%s\n' "$windows" | while read -r a ws; do
+              [ -n "$a" ] && dispatch "hl.dsp.window.move({ workspace = \"$ws\", window = \"address:$a\", follow = false })"
+            done
+            dispatch "hl.dsp.focus({ window = \"address:$addr\" })"
+          fi
+        done
+      '';
+      Restart = "always";
+      RestartSec = 1;
+    };
+    Install.WantedBy = [ "graphical-session.target" ];
+  };
+
+  # Launcher entry: brings back Discord windows left hidden by a cancelled
+  # prompt (onto the current workspace, which focuses them and prompts
+  # again), otherwise starts Discord. Same ID as the Flatpak export so it
+  # shadows it in the launcher and for discord:// links. Written to
+  # ~/.local/share (XDG_DATA_HOME), not through xdg.desktopEntries: that
+  # lands in the per-user profile, which comes after flatpak's exports in
+  # XDG_DATA_DIRS and would lose.
+  xdg.dataFile."applications/com.discordapp.Discord.desktop".text = ''
+    [Desktop Entry]
+    Type=Application
+    Name=Discord
+    GenericName=Internet Messenger
+    Icon=com.discordapp.Discord
+    Exec=${pkgs.writeShellScript "discord-open" ''
+      hyprctl=${pkgs.hyprland}/bin/hyprctl
+      jq=${pkgs.jq}/bin/jq
+      hidden=$("$hyprctl" clients -j | "$jq" -r '.[]
+        | select(.class == "discord" and .workspace.name == "special:discordlock")
+        | .address')
+      if [ -z "$hidden" ]; then
+        exec flatpak run com.discordapp.Discord "$@"
+      fi
+      ws=$("$hyprctl" activeworkspace -j | "$jq" -r .id)
+      for a in $hidden; do
+        "$hyprctl" dispatch "hl.dsp.window.move({ workspace = \"$ws\", window = \"address:$a\", follow = false })" > /dev/null
+      done
+      "$hyprctl" dispatch "hl.dsp.focus({ window = \"address:''${hidden%%[[:space:]]*}\" })" > /dev/null
+    ''} %U
+    Categories=Network;InstantMessaging;
+    MimeType=x-scheme-handler/discord;
+    StartupWMClass=discord
+  '';
+
   home.packages = with pkgs; [
     # Dev tools
     dbeaver-bin

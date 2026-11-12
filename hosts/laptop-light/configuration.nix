@@ -41,6 +41,29 @@
   # the password through polkit instead (hyprpolkitagent, home/home.nix).
   users.users.lmichault.extraGroups = [ "wireshark" ];
 
+  # Polkit action checked by the discord-lock watcher (modules/home/
+  # laptop-light.nix) so focusing Discord asks for the password through
+  # hyprpolkitagent, like virt-manager. auth_self, not auth_self_keep:
+  # the user's own password, asked again every time.
+  environment.systemPackages = [
+    (pkgs.writeTextDir "share/polkit-1/actions/local.discord.open.policy" ''
+      <?xml version="1.0" encoding="UTF-8"?>
+      <!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+       "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+      <policyconfig>
+        <action id="local.discord.open">
+          <description>Open Discord</description>
+          <message>Authentication is required to open Discord</message>
+          <defaults>
+            <allow_any>no</allow_any>
+            <allow_inactive>no</allow_inactive>
+            <allow_active>auth_self</allow_active>
+          </defaults>
+        </action>
+      </policyconfig>
+    '')
+  ];
+
   # KVM/QEMU virtualization + GUI front-end.
   virtualisation.libvirtd.enable = true;
   programs.virt-manager.enable = true;
