@@ -244,6 +244,57 @@ usbguard list-devices          # find its id
 sudo usbguard allow-device <id> -p   # -p persists the rule
 ```
 
+### FIDO2 security keys
+
+Two Token2 PIN+ Dual keys (main + backup, `349e:0024`). Neither has a
+USB serial, so one USBGuard rule covers both. Pinning the exact interface
+set (FIDO HID + CCID smartcard) only rules out a spoofer exposing extra or
+boot-keyboard interfaces: a generic HID interface can still declare itself
+a keyboard in its report descriptor, which USBGuard doesn't see. On each
+host:
+
+```bash
+sudo usbguard append-rule 'allow id 349e:0024 name "FIDO2 Security Key(0024)" with-interface equals { 03:00:00 0b:00:00 }'
+```
+
+Set a PIN on each key (once per key, any host):
+
+```bash
+nix shell nixpkgs#libfido2 -c fido2-token -L                   # find /dev/hidrawN
+nix shell nixpkgs#libfido2 -c fido2-token -S /dev/hidrawN
+```
+
+**PAM** (`security.pam.u2f` in `modules/nixos/base.nix`): either key (PIN,
+then touch — PIN+ keys have `alwaysUv`, so no touch-only mode) replaces the password for sudo, greetd, hyprlock and polkit; the
+password keeps working. Register both keys once (main plugged in, then
+backup), then rebuild every host:
+
+```bash
+cd ~/nixos-config
+nix shell nixpkgs#pam_u2f -c pamu2fcfg -o pam://lmichault -i pam://lmichault > modules/nixos/u2f_keys
+# swap keys
+nix shell nixpkgs#pam_u2f -c pamu2fcfg -o pam://lmichault -i pam://lmichault -n >> modules/nixos/u2f_keys
+# both registrations must end up on a single line: lmichault:<main>:<backup>
+sed -i -z 's/\n:/:/' modules/nixos/u2f_keys
+git add modules/nixos/u2f_keys
+```
+
+With a key plugged in, sudo and tuigreet ask for the key's PIN first;
+submit it empty to fall through to the password. Typing the password there
+costs a PIN retry (8, reset on success). hyprlock is the other way round
+(it never shows "touch the key"): password, or Enter on the empty field,
+then the PIN, then touch.
+
+**SSH**: one resident `ed25519-sk` key per security key, PIN + touch on
+every use; add both `.pub` to GitHub/servers.
+
+```bash
+ssh-keygen -t ed25519-sk -O resident -O verify-required -O application=ssh:main   -C "token2-main"   -f ~/.ssh/id_ed25519_sk_main
+ssh-keygen -t ed25519-sk -O resident -O verify-required -O application=ssh:backup -C "token2-backup" -f ~/.ssh/id_ed25519_sk_backup
+# on another host, pull the key stubs back off the security key:
+cd ~/.ssh && ssh-keygen -K
+```
+
 ### Other
 
 - `libvirtd` group is not granted (root-equivalent): virt-manager asks for

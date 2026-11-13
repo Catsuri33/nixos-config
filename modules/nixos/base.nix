@@ -92,6 +92,37 @@
     presentDevicePolicy = lib.mkDefault "allow";
   };
 
+  # Token2 FIDO2 keys (main + backup) as an alternative to the password for
+  # every PAM service: sudo, greetd, hyprlock, polkit. "sufficient" = key
+  # (PIN + touch) OR password, so losing both keys never locks anyone
+  # out. ./u2f_keys holds both keys' registrations (public key + key handle,
+  # nothing secret) under a host-independent origin, so one registration
+  # works on all three hosts. Only enabled once that file exists (and is
+  # git-tracked, or the flake can't see it) — see README.md for the
+  # pamu2fcfg commands.
+  security.pam.u2f = {
+    enable = builtins.pathExists ./u2f_keys;
+    control = "sufficient";
+    settings = {
+      # builtins.path copies just this file, not the whole flake source.
+      authfile = builtins.path { path = ./u2f_keys; name = "u2f_keys"; };
+      origin = "pam://lmichault";
+      appid = "pam://lmichault";
+      cue = true;
+      # Token2 PIN+ keys have alwaysUv set: without the PIN they refuse
+      # every assertion, so pam_u2f must ask for it (PIN, then touch).
+      pinverification = 1;
+    };
+  };
+  # hyprlock comes from home-manager, which can't add a PAM service, so it
+  # was falling back to /etc/pam.d/su. Give it its own (what the NixOS
+  # programs.hyprlock module does), u2f included. Password first there,
+  # unlike sudo: hyprlock never shows u2f's "touch the key" cue, and a
+  # password typed into the PIN prompt by habit burns one of the key's 8
+  # PIN retries. Enter on the empty field moves on to the PIN prompt.
+  security.pam.services.hyprlock.rules.auth.u2f.order =
+    config.security.pam.services.hyprlock.rules.auth.unix.order + 10;
+
   boot.kernel.sysctl = {
     "kernel.kptr_restrict" = 2;
     "kernel.dmesg_restrict" = 1;

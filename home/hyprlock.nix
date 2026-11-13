@@ -95,7 +95,10 @@
           font_family = "Inter";
 
           fade_on_empty = false;
-          placeholder_text = "<span foreground=\"##ffffff99\">Enter Password</span>";
+          # $PAMPROMPT = what PAM is asking for: "Password:", then the
+          # FIDO2 PIN after an empty submit with a security key plugged in
+          # (pam_u2f, modules/nixos/base.nix).
+          placeholder_text = "<span foreground=\"##ffffff99\">$PAMPROMPT</span>";
 
           hide_input = false;
           rounding = -1;
